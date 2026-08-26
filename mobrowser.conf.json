@@ -1,0 +1,127 @@
+{
+  "app": {
+    "name": "Sitemap Builder",
+    "version": {
+      "major": "1",
+      "minor": "0",
+      "patch": "0"
+    },
+    "author": "",
+    "copyright": "",
+    "description": "",
+    "locales": [
+      "de"
+    ],
+    "trustedOrigins": [],
+    "updateServerUrl": "",
+    "schemes": [],
+    "bundle": {
+      "macOS": {
+        "executableName": "",
+        "icon": "assets/app.icns",
+        "bundleID": "com.nickbethke.sitemap-builder",
+        "extraInfo": "",
+        "codesignIdentity": "${MAC_CODESIGN_IDENTITY}",
+        "codesignEntitlements": "assets/entitlements.plist",
+        "fileAssociations": [
+          {
+            "extensions": [
+              "smap"
+            ],
+            "name": "Sitemap Builder Datei",
+            "icon": "assets/app.icns"
+          }
+        ],
+        "teamID": "${MAC_TEAM_ID}",
+        "appleID": "${MAC_APPLE_ID}",
+        "provisioningProfile": "",
+        "password": "${MAC_APPLE_PASSWORD}",
+        "extras": [],
+        "installer": {
+          "dmg": {
+            "name": "",
+            "volumeName": "",
+            "volumeIcon": "assets/app.icns",
+            "eula": "",
+            "deltaStrategy": "BestSpeed",
+            "window": {
+              "textSize": 14,
+              "skipPrettifying": false,
+              "backgroundImage": "",
+              "position": {
+                "x": 500,
+                "y": 400
+              },
+              "size": {
+                "width": 600,
+                "height": 400
+              },
+              "icon": {
+                "size": 150,
+                "position": {
+                  "x": 160,
+                  "y": 160
+                }
+              },
+              "appDropLink": {
+                "x": 430,
+                "y": 160
+              }
+            }
+          }
+        }
+      },
+      "Windows": {
+        "executableName": "",
+        "icon": "assets/app.ico",
+        "signCommand": "",
+        "fileAssociations": [
+          {
+            "extensions": [
+              "smap"
+            ],
+            "name": "Sitemap Builder Datei",
+            "icon": "assets/app.ico"
+          }
+        ],
+        "extras": [],
+        "installer": {
+          "exe": {
+            "name": "",
+            "icon": "assets/app.ico",
+            "installationGif": "",
+            "packageId": "SitemapBuilder",
+            "installationFolderName": "Sitemap Builder",
+            "displayName": "Sitemap Builder",
+            "shortcuts": "Desktop,StartMenuRoot",
+            "deltaStrategy": "BestSpeed"
+          }
+        }
+      },
+      "Linux": {
+        "executableName": "",
+        "icon": "assets/app.png",
+        "fileAssociations": [
+          {
+            "extensions": [
+              "smap"
+            ],
+            "name": "Sitemap Builder Datei",
+            "mimeType": "application/x-sitemap-builder",
+            "icon": "assets/app.png"
+          }
+        ],
+        "extras": []
+      }
+    }
+  },
+  "automation": {
+    "mode": "interactive"
+  },
+  "native": {
+    "protobuf": {
+      "mode": "auto",
+      "toolchainMatch": "major"
+    }
+  }
+}

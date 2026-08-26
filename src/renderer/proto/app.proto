@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+message SetThemeRequest {
+  string theme = 1;
+}
+
+message SaveSitemapRequest {
+  string payload = 1;
+  string current_path = 2;
+}
+
+message SaveSitemapResponse {
+  bool canceled = 1;
+  string path = 2;
+}
+
+message OpenSitemapRequest {}
+
+message OpenSitemapResponse {
+  bool canceled = 1;
+  string path = 2;
+  string payload = 3;
+}
+
+message OpenedSitemap {
+  string path = 1;
+  string payload = 2;
+}
+
+service AppService {
+  rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
+  rpc SaveSitemap(SaveSitemapRequest) returns (SaveSitemapResponse);
+  rpc OpenSitemap(OpenSitemapRequest) returns (OpenSitemapResponse);
+  rpc GetStartupSitemap(google.protobuf.Empty) returns (OpenSitemapResponse);
+}
+
+service OpenFileService {
+  rpc WatchOpenedSitemaps(google.protobuf.Empty) returns (stream OpenedSitemap);
+}
