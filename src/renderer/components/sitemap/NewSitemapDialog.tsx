@@ -1,10 +1,7 @@
 import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
-import {
-    PROJECT_TEMPLATES,
-    type ProjectTemplateId,
-    type SitemapProject,
-} from '@/lib/sitemap.ts';
+import {PROJECT_TEMPLATES, type ProjectTemplateId, type SitemapProject} from '@/lib/sitemap.ts';
+import {cn} from '@/lib/utils.ts';
 import {Check, X} from 'lucide-react';
 import {useState} from 'react';
 
@@ -13,10 +10,10 @@ type NewSitemapDialogProps = {
     onCreate: (templateId: ProjectTemplateId, project: SitemapProject) => void;
 };
 
-export function NewSitemapDialog({
-    onClose,
-    onCreate,
-}: NewSitemapDialogProps) {
+const eyebrowClass = 'block text-[9px] font-bold uppercase tracking-widest text-muted-foreground';
+const labelClass = 'flex flex-col gap-1.5 text-[10px] font-semibold text-muted-foreground';
+
+export function NewSitemapDialog({onClose, onCreate}: NewSitemapDialogProps) {
     const [templateId, setTemplateId] = useState<ProjectTemplateId>('empty');
     const [project, setProject] = useState<SitemapProject>({
         name: 'Neue Sitemap',
@@ -30,93 +27,77 @@ export function NewSitemapDialog({
     };
 
     return (
-        <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
+        <div
+            className="fixed inset-0 z-50 grid place-items-center bg-[#07142e]/45 p-5 backdrop-blur-sm"
+            role="presentation"
+            onMouseDown={onClose}
+        >
             <section
-                className="new-sitemap-dialog"
+                className="w-full max-w-3xl overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="new-sitemap-title"
                 onMouseDown={(event) => event.stopPropagation()}
             >
-                <header>
+                <header className="flex items-start justify-between border-b border-border px-6 py-5">
                     <div>
-                        <span className="eyebrow">Neues Projekt</span>
-                        <h2 id="new-sitemap-title">Sitemap erstellen</h2>
-                        <p>Starte leer oder mit einer passenden Seitenstruktur.</p>
+                        <span className={eyebrowClass}>Neues Projekt</span>
+                        <h2 className="mb-1 mt-1 text-xl tracking-tight" id="new-sitemap-title">Sitemap erstellen</h2>
+                        <p className="m-0 text-xs text-muted-foreground">Starte leer oder mit einer passenden Seitenstruktur.</p>
                     </div>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Dialog schließen"
-                        onClick={onClose}
-                    >
+                    <Button className="-mr-2 -mt-1 text-muted-foreground" variant="ghost" size="icon" aria-label="Dialog schließen" onClick={onClose}>
                         <X size={18}/>
                     </Button>
                 </header>
 
-                <div className="template-options" role="radiogroup" aria-label="Vorlage wählen">
+                <div className="grid grid-cols-2 gap-2 border-b border-border p-5" role="radiogroup" aria-label="Vorlage wählen">
                     {PROJECT_TEMPLATES.map((template) => {
                         const selected = template.id === templateId;
                         return (
                             <button
                                 key={template.id}
-                                className={selected ? 'template-option selected' : 'template-option'}
+                                className={cn(
+                                    'relative flex min-h-24 cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-primary/50 hover:bg-accent/40',
+                                    selected && 'border-primary bg-accent/50 ring-2 ring-primary/10',
+                                )}
                                 role="radio"
                                 aria-checked={selected}
                                 onClick={() => setTemplateId(template.id)}
                             >
-                                <span className="template-check">
+                                <span className={cn(
+                                    'grid size-5 shrink-0 place-items-center rounded-full border border-input text-white',
+                                    selected && 'border-primary bg-primary',
+                                )}>
                                     {selected && <Check size={13}/>} 
                                 </span>
                                 <span>
-                                    <strong>{template.title}</strong>
-                                    <small>{template.description}</small>
+                                    <strong className="block text-xs text-foreground">{template.title}</strong>
+                                    <small className="mt-1 block pr-3 text-[10px] leading-snug text-muted-foreground">{template.description}</small>
                                 </span>
-                                <em>{template.pageCount} Seiten</em>
+                                <em className="absolute bottom-3 right-3 text-[9px] not-italic text-muted-foreground">{template.pageCount} Seiten</em>
                             </button>
                         );
                     })}
                 </div>
 
-                <div className="new-sitemap-fields">
-                    <label>
+                <div className="grid grid-cols-3 gap-3 p-5">
+                    <label className={labelClass}>
                         Projektname
-                        <Input
-                            autoFocus
-                            value={project.name}
-                            onChange={(event) => setProject({
-                                ...project,
-                                name: event.target.value,
-                            })}
-                        />
+                        <Input className="h-9 px-2 text-xs text-foreground" autoFocus value={project.name} onChange={(event) => setProject({...project, name: event.target.value})}/>
                     </label>
-                    <label>
+                    <label className={labelClass}>
                         Kunde / Unternehmen
-                        <Input
-                            value={project.client}
-                            onChange={(event) => setProject({
-                                ...project,
-                                client: event.target.value,
-                            })}
-                        />
+                        <Input className="h-9 px-2 text-xs text-foreground" value={project.client} onChange={(event) => setProject({...project, client: event.target.value})}/>
                     </label>
-                    <label>
+                    <label className={labelClass}>
                         Basis-URL
-                        <Input
-                            value={project.baseUrl}
-                            onChange={(event) => setProject({
-                                ...project,
-                                baseUrl: event.target.value,
-                            })}
-                        />
+                        <Input className="h-9 px-2 text-xs text-foreground" value={project.baseUrl} onChange={(event) => setProject({...project, baseUrl: event.target.value})}/>
                     </label>
                 </div>
 
-                <footer>
+                <footer className="flex justify-end gap-2 border-t border-border px-5 py-4 [&_button]:h-9 [&_button]:text-xs">
                     <Button variant="outline" onClick={onClose}>Abbrechen</Button>
-                    <Button onClick={create} disabled={!project.name.trim()}>
-                        Sitemap erstellen
-                    </Button>
+                    <Button onClick={create} disabled={!project.name.trim()}>Sitemap erstellen</Button>
                 </footer>
             </section>
         </div>

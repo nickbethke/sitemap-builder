@@ -4,6 +4,7 @@ import {NewSitemapDialog} from '@/components/sitemap/NewSitemapDialog.tsx';
 import {Topbar} from '@/components/sitemap/Topbar.tsx';
 import {Workspace} from '@/components/sitemap/Workspace.tsx';
 import {ThemeProvider} from '@/components/theme-provider.tsx';
+import {ConfirmDialog} from '@/components/ui/confirm-dialog.tsx';
 import {useSitemapBuilder} from '@/hooks/useSitemapBuilder.ts';
 import {useState} from 'react';
 
@@ -20,7 +21,7 @@ function SitemapBuilder() {
     const [newSitemapOpen, setNewSitemapOpen] = useState(false);
 
     return (
-        <div className="app-shell">
+        <div className="grid h-screen grid-cols-[214px_minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[180px_minmax(500px,1fr)_285px]">
             <Topbar
                 projectName={sitemap.document.project.name}
                 dirty={sitemap.dirty}
@@ -91,6 +92,17 @@ function SitemapBuilder() {
                     onCreate={sitemap.newProject}
                 />
             )}
+
+            <ConfirmDialog
+                open={Boolean(sitemap.confirmation)}
+                title={sitemap.confirmation?.title ?? ''}
+                description={sitemap.confirmation?.description ?? ''}
+                confirmLabel={sitemap.confirmation?.confirmLabel}
+                cancelLabel={sitemap.confirmation?.cancelLabel}
+                destructive={sitemap.confirmation?.destructive}
+                onConfirm={() => sitemap.answerConfirmation(true)}
+                onCancel={() => sitemap.answerConfirmation(false)}
+            />
         </div>
     );
 }

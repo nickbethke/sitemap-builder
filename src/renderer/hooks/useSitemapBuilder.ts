@@ -20,6 +20,18 @@ import {
     useState,
 } from 'react';
 
+type ConfirmationOptions = {
+    title: string;
+    description: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    destructive?: boolean;
+};
+
+type ConfirmationRequest = ConfirmationOptions & {
+    resolve: (confirmed: boolean) => void;
+};
+
 export function useSitemapBuilder() {
     const {theme, setTheme} = useTheme();
     const [document, setDocument] = useState<SitemapDocument>(
@@ -28,7 +40,7 @@ export function useSitemapBuilder() {
     const [selectedId, setSelectedId] = useState('webdesign');
     const [draggedId, setDraggedId] = useState<string | null>(null);
     const [dropTargetId, setDropTargetId] = useState<string | null>(null);
-    const [zoom, setZoom] = useState(0.82);
+    const [zoom, setZoom] = useState(1);
     const [layoutDirection, setLayoutDirection] = useState<LayoutDirection>(
         'horizontal',
     );
@@ -38,6 +50,15 @@ export function useSitemapBuilder() {
     const [search, setSearch] = useState('');
     const [past, setPast] = useState<SitemapDocument[]>([]);
     const [future, setFuture] = useState<SitemapDocument[]>([]);
+    const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
+
+    const requestConfirmation = useCallback((options: ConfirmationOptions) => (
+        new Promise<boolean>((resolve) => setConfirmation({...options, resolve}))
+    ), []);
+    const answerConfirmation = useCallback((confirmed: boolean) => {
+        setConfirmation(null);
+        confirmation?.resolve(confirmed);
+    }, [confirmation]);
 
     const selectedNode = document.nodes.find(
         (node) => node.id === selectedId,
@@ -149,13 +170,17 @@ export function useSitemapBuilder() {
         });
 
         void ipc.app.GetStartupSitemap({})
-            .then((result) => {
+            .then(async (result) => {
                 if (!result.canceled) {
                     loadSitemap(result.path, result.payload);
                     return;
                 }
                 const autosave = localStorage.getItem('sitemap-builder-autosave');
-                if (autosave && window.confirm('Automatisch gesicherte Sitemap wiederherstellen?')) {
+                if (autosave && await requestConfirmation({
+                    title: 'Sicherung wiederherstellen?',
+                    description: 'Eine automatisch gespeicherte Sitemap wurde gefunden. Möchtest du mit diesem Stand weiterarbeiten?',
+                    confirmLabel: 'Wiederherstellen',
+                })) {
                     const recovered = JSON.parse(autosave) as {document: SitemapDocument; currentPath: string};
                     setDocument(normalizeDocument(recovered.document));
                     setSelectedId(recovered.document.nodes[0]?.id ?? '');
@@ -173,7 +198,7 @@ export function useSitemapBuilder() {
             });
 
         return () => subscription.unsubscribe();
-    }, [loadSitemap]);
+    }, [loadSitemap, requestConfirmation]);
 
     const undo = useCallback(() => {
         setPast((items) => {
@@ -390,7 +415,7 @@ export function useSitemapBuilder() {
         setMessage('Seite eine Ebene hoch verschoben');
     };
 
-    const deleteNode = (nodeId = selectedId) => {
+    const deleteNode = async (nodeId = selectedId) => {
         const source = document.nodes.find((node) => node.id === nodeId);
         if (!source || source.parentId === null) return;
 
@@ -402,8 +427,15 @@ export function useSitemapBuilder() {
             }
             return false;
         }).length;
-        const detail = descendantCount ? ` und ${descendantCount} Unterseite(n)` : '';
-        if (!window.confirm(`„${source.title}“${detail} wirklich löschen?`)) return;
+        const confirmed = await requestConfirmation({
+            title: `„${source.title}“ wirklich löschen?`,
+            description: descendantCount
+                ? `Dabei ${descendantCount === 1 ? 'wird auch eine Unterseite' : `werden auch ${descendantCount} Unterseiten`} gelöscht. Du kannst diese Änderung anschließend rückgängig machen.`
+                : 'Die Seite wird aus der Sitemap entfernt. Du kannst diese Änderung anschließend rückgängig machen.',
+            confirmLabel: 'Löschen',
+            destructive: true,
+        });
+        if (!confirmed) return;
 
         const ids = new Set([source.id]);
         let changed = true;
@@ -502,6 +534,8 @@ export function useSitemapBuilder() {
         dirty,
         message,
         search,
+        confirmation,
+        answerConfirmation,
         canUndo: past.length > 0,
         canRedo: future.length > 0,
         canMoveUp: selectedSiblingIndex > 0,

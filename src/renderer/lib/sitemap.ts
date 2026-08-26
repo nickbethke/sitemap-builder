@@ -131,12 +131,6 @@ export const SEO_IMPORTANCE_LEVELS: SeoImportance[] = [
     'Niedrig',
 ];
 
-export const importanceClass: Record<SeoImportance, string> = {
-    Hoch: 'badge badge-high',
-    Mittel: 'badge badge-medium',
-    Niedrig: 'badge badge-low',
-};
-
 export const starterDocument: SitemapDocument = {
     formatVersion: 1,
     project: {

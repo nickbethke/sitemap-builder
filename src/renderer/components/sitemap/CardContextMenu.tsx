@@ -22,6 +22,8 @@ type CardContextMenuProps = {
     onMoveUpLevel: () => void;
 };
 
+const itemClass = 'flex min-h-8 cursor-default select-none items-center gap-2 rounded-md px-2 text-xs text-popover-foreground outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40';
+
 export function CardContextMenu({
     canDelete,
     canMoveUp,
@@ -38,7 +40,7 @@ export function CardContextMenu({
         <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
                 <button
-                    className="card-menu-trigger"
+                    className="grid size-6 place-items-center rounded-md border-0 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-primary"
                     aria-label="Kachelaktionen"
                     title="Kachelaktionen"
                     onClick={(event) => event.stopPropagation()}
@@ -49,57 +51,39 @@ export function CardContextMenu({
 
             <DropdownMenu.Portal>
                 <DropdownMenu.Content
-                    className="card-context-menu"
+                    className="z-50 min-w-48 rounded-lg border border-border bg-popover p-1 shadow-xl"
                     sideOffset={5}
                     align="end"
                     onClick={(event) => event.stopPropagation()}
                 >
-                    <DropdownMenu.Item
-                        className="card-context-menu-item"
-                        onSelect={onAddChild}
-                    >
+                    <DropdownMenu.Item className={itemClass} onSelect={onAddChild}>
                         <Plus size={14}/>
                         Unterseite erstellen
                     </DropdownMenu.Item>
-                    <DropdownMenu.Item
-                        className="card-context-menu-item"
-                        onSelect={onDuplicate}
-                    >
+                    <DropdownMenu.Item className={itemClass} onSelect={onDuplicate}>
                         <Copy size={14}/>
                         Duplizieren
                     </DropdownMenu.Item>
 
-                    <DropdownMenu.Separator className="card-context-menu-separator"/>
+                    <DropdownMenu.Separator className="m-1 h-px bg-border"/>
 
-                    <DropdownMenu.Item
-                        className="card-context-menu-item"
-                        disabled={!canMoveUp}
-                        onSelect={onMoveUp}
-                    >
+                    <DropdownMenu.Item className={itemClass} disabled={!canMoveUp} onSelect={onMoveUp}>
                         <ArrowUp size={14}/>
                         Nach oben sortieren
                     </DropdownMenu.Item>
-                    <DropdownMenu.Item
-                        className="card-context-menu-item"
-                        disabled={!canMoveDown}
-                        onSelect={onMoveDown}
-                    >
+                    <DropdownMenu.Item className={itemClass} disabled={!canMoveDown} onSelect={onMoveDown}>
                         <ArrowDown size={14}/>
                         Nach unten sortieren
                     </DropdownMenu.Item>
-                    <DropdownMenu.Item
-                        className="card-context-menu-item"
-                        disabled={!canMoveUpLevel}
-                        onSelect={onMoveUpLevel}
-                    >
+                    <DropdownMenu.Item className={itemClass} disabled={!canMoveUpLevel} onSelect={onMoveUpLevel}>
                         <CornerLeftUp size={14}/>
                         Eine Ebene hoch
                     </DropdownMenu.Item>
 
-                    <DropdownMenu.Separator className="card-context-menu-separator"/>
+                    <DropdownMenu.Separator className="m-1 h-px bg-border"/>
 
                     <DropdownMenu.Item
-                        className="card-context-menu-item destructive"
+                        className={`${itemClass} text-destructive`}
                         disabled={!canDelete}
                         onSelect={onDelete}
                     >
