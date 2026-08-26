@@ -1,6 +1,6 @@
 import {Input} from '@/components/ui/input.tsx';
 import type {SitemapProject} from '@/lib/sitemap.ts';
-import {CircleHelp, FilePlus2, FolderOpen, Save} from 'lucide-react';
+import {CircleHelp, Download, FilePlus2, FolderOpen, Save} from 'lucide-react';
 
 type LeftSidebarProps = {
     project: SitemapProject;
@@ -8,6 +8,7 @@ type LeftSidebarProps = {
     onNewProject: () => void;
     onOpen: () => void;
     onSaveAs: () => void;
+    onExport: (format: 'xml' | 'csv') => void;
 };
 
 export function LeftSidebar({
@@ -16,6 +17,7 @@ export function LeftSidebar({
     onNewProject,
     onOpen,
     onSaveAs,
+    onExport,
 }: LeftSidebarProps) {
     return (
         <aside className="left-sidebar">
@@ -56,6 +58,14 @@ export function LeftSidebar({
                 <button onClick={onSaveAs}>
                     <Save/>
                     Speichern unter
+                </button>
+                <button onClick={() => onExport('xml')}>
+                    <Download/>
+                    XML exportieren
+                </button>
+                <button onClick={() => onExport('csv')}>
+                    <Download/>
+                    CSV exportieren
                 </button>
             </div>
 

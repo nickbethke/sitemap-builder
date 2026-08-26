@@ -217,6 +217,17 @@ export function Inspector({
                             />
                         </label>
                         <label>
+                            Alte URL / Redirect von
+                            <Input
+                                value={selectedNode.redirectFrom ?? ''}
+                                placeholder="/alte-url"
+                                onChange={(event: React.ChangeEvent<HTMLInputElement>) => onUpdateNode(
+                                    'redirectFrom',
+                                    event.target.value,
+                                )}
+                            />
+                        </label>
+                        <label>
                             Notizen
                             <textarea
                                 value={selectedNode.notes}

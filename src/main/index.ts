@@ -3,7 +3,7 @@ import {readFile, rename, stat, writeFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import * as process from 'node:process';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {SaveSitemapRequest, SetThemeRequest} from './gen/app';
+import {ExportRequest, SaveSitemapRequest, SetThemeRequest} from './gen/app';
 import {AppServiceDescriptor, OpenFileServiceDescriptor} from './gen/ipc_service';
 
 const MAGIC = Buffer.from('SMAP');
@@ -102,5 +102,20 @@ ipc.registerService(AppServiceDescriptor, {
         if (!startupSitemapPath) return {canceled: true, path: '', payload: ''};
         const sitemap = await openSitemapFile(startupSitemapPath);
         return {canceled: false, ...sitemap};
+    },
+    async ExportFile(request: ExportRequest) {
+        const extension = request.format === 'xml' ? 'xml' : 'csv';
+        const result = await app.showSaveDialog({
+            parentWindow: win,
+            title: `${extension.toUpperCase()} exportieren`,
+            defaultPath: `${request.suggestedName || 'sitemap'}.${extension}`,
+            filters: [{name: `${extension.toUpperCase()} Datei`, extensions: [extension]}],
+        });
+        if (result.canceled || !result.path) return {canceled: true, path: ''};
+        const path = extname(result.path).toLowerCase() === `.${extension}`
+            ? result.path
+            : `${result.path}.${extension}`;
+        await writeFile(path, request.content, {encoding: 'utf8', mode: 0o600});
+        return {canceled: false, path};
     },
 });

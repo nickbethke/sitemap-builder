@@ -1,6 +1,6 @@
 import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
-import {FolderOpen, Moon, Save, Sun} from 'lucide-react';
+import {FolderOpen, Moon, Redo2, Save, Sun, Undo2} from 'lucide-react';
 
 type TopbarProps = {
     projectName: string;
@@ -10,6 +10,10 @@ type TopbarProps = {
     onThemeToggle: () => void;
     onOpen: () => void;
     onSave: () => void;
+    onUndo: () => void;
+    onRedo: () => void;
+    canUndo: boolean;
+    canRedo: boolean;
 };
 
 export function Topbar({
@@ -20,6 +24,10 @@ export function Topbar({
     onThemeToggle,
     onOpen,
     onSave,
+    onUndo,
+    onRedo,
+    canUndo,
+    canRedo,
 }: TopbarProps) {
     return (
         <header className="topbar">
@@ -47,6 +55,12 @@ export function Topbar({
             </div>
 
             <div className="toolbar-actions">
+                <Button variant="ghost" size="icon" aria-label="Rückgängig" title="Rückgängig" disabled={!canUndo} onClick={onUndo}>
+                    <Undo2 size={17}/>
+                </Button>
+                <Button variant="ghost" size="icon" aria-label="Wiederholen" title="Wiederholen" disabled={!canRedo} onClick={onRedo}>
+                    <Redo2 size={17}/>
+                </Button>
                 <Button
                     variant="ghost"
                     size="icon"

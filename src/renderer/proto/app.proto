@@ -29,11 +29,23 @@ message OpenedSitemap {
   string payload = 2;
 }
 
+message ExportRequest {
+  string content = 1;
+  string format = 2;
+  string suggested_name = 3;
+}
+
+message ExportResponse {
+  bool canceled = 1;
+  string path = 2;
+}
+
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SaveSitemap(SaveSitemapRequest) returns (SaveSitemapResponse);
   rpc OpenSitemap(OpenSitemapRequest) returns (OpenSitemapResponse);
   rpc GetStartupSitemap(google.protobuf.Empty) returns (OpenSitemapResponse);
+  rpc ExportFile(ExportRequest) returns (ExportResponse);
 }
 
 service OpenFileService {

@@ -264,7 +264,7 @@
 }
 
 .workspace {
-    @apply grid min-h-0 min-w-0;
+    @apply relative grid min-h-0 min-w-0;
     grid-column: 2;
     grid-template-rows: 50px minmax(0, 1fr) 29px;
     background: hsl(var(--canvas));
@@ -294,6 +294,22 @@
 
 .canvas-actions button {
     @apply h-[31px] gap-1.5 text-[11px];
+}
+
+.canvas-actions select {
+    @apply h-[30px] max-w-[90px] rounded-[7px] border border-border bg-background px-2 text-[10px] text-foreground outline-none;
+}
+
+.canvas-actions .filter-reset {
+    @apply rounded-[7px] border border-primary/30 bg-accent px-2 text-primary;
+}
+
+.issue-button {
+    @apply flex items-center rounded-[7px] border border-border bg-background px-2 text-muted-foreground;
+}
+
+.issue-button.has-issues {
+    @apply border-amber-500/40 bg-amber-500/10 text-amber-600;
 }
 
 .layout-controls {
@@ -505,6 +521,147 @@
     left: calc(50% - 14px);
 }
 
+.workspace.tool-window-open {
+    grid-template-rows: 50px minmax(180px, 1fr) 220px 29px;
+}
+
+.issues-panel {
+    @apply relative flex min-h-0 flex-col border-t border-border;
+    background: hsl(var(--panel));
+    box-shadow: 0 -3px 12px rgb(7 20 46 / .05);
+}
+
+.tool-window-resizer {
+    @apply absolute left-0 right-0 top-[-4px] z-10 h-2 cursor-ns-resize;
+    touch-action: none;
+}
+
+.tool-window-resizer::after {
+    @apply absolute left-0 right-0 top-[3px] h-px bg-transparent;
+    content: '';
+}
+
+.tool-window-resizer:hover::after,
+.tool-window-resizer:active::after {
+    @apply bg-primary;
+}
+
+.issues-panel > header {
+    @apply flex h-9 shrink-0 items-center justify-between border-b border-border bg-muted/50 px-3;
+}
+
+.issues-panel > header div {
+    @apply flex items-center gap-2 text-primary;
+}
+
+.issues-panel > header strong {
+    @apply text-[10px] text-foreground;
+}
+
+.issues-panel > header span {
+    @apply text-[9px] text-muted-foreground;
+}
+
+.issues-panel > header button {
+    @apply grid size-6 place-items-center rounded-[5px] text-muted-foreground;
+}
+
+.issues-panel > header button:hover {
+    @apply bg-muted text-foreground;
+}
+
+.issues-list {
+    @apply min-h-0 overflow-auto;
+}
+
+.issues-list > p {
+    @apply m-0 px-4 py-5 text-[10px] text-muted-foreground;
+}
+
+.issues-list > button {
+    @apply grid min-h-8 w-full grid-cols-[8px_150px_1fr_60px] items-center gap-2 border-b border-border px-3 text-left text-[9px] text-muted-foreground;
+}
+
+.issues-list > button:hover {
+    @apply bg-accent/60 text-foreground;
+}
+
+.issues-list button i {
+    @apply size-1.5 rounded-full bg-amber-500;
+}
+
+.issues-list button i.error {
+    @apply bg-destructive;
+}
+
+.issues-list button b {
+    @apply overflow-hidden text-ellipsis whitespace-nowrap text-foreground;
+}
+
+.issues-list button em {
+    @apply text-right text-[8px] not-italic uppercase tracking-wide;
+}
+
+.sitemap-table-wrap {
+    @apply overflow-auto p-4;
+}
+
+.bulk-toolbar {
+    @apply sticky left-0 top-0 z-10 mb-2 flex h-10 items-center gap-3 rounded-[8px] border border-primary/25 bg-accent px-3 text-[10px];
+}
+
+.bulk-toolbar strong {
+    @apply text-primary;
+}
+
+.bulk-toolbar select,
+.bulk-toolbar button {
+    @apply h-7 rounded-[6px] border border-border bg-background px-2 text-[9px] text-foreground;
+}
+
+.sitemap-table {
+    @apply w-full border-separate border-spacing-0 overflow-hidden rounded-[10px] border border-border bg-card text-left text-[10px];
+}
+
+.sitemap-table th {
+    @apply sticky top-0 min-w-[90px] cursor-pointer overflow-hidden border-b border-border bg-muted px-3 py-2.5 text-[9px] uppercase tracking-wider text-muted-foreground;
+    resize: horizontal;
+}
+
+.sitemap-table th.select-column {
+    @apply min-w-10 w-10 cursor-default;
+    resize: none;
+}
+
+.sitemap-table td {
+    @apply border-b border-border px-2 py-1.5 text-muted-foreground;
+}
+
+.sitemap-table td input:not([type="checkbox"]),
+.sitemap-table td select {
+    @apply h-7 w-full min-w-[80px] rounded-[5px] border border-transparent bg-transparent px-1.5 text-[10px] text-foreground outline-none;
+}
+
+.sitemap-table td input:hover,
+.sitemap-table td select:hover,
+.sitemap-table td input:focus,
+.sitemap-table td select:focus {
+    @apply border-input bg-background;
+}
+
+.sitemap-table tbody tr {
+    @apply cursor-pointer;
+}
+
+.sitemap-table tbody tr:hover,
+.sitemap-table tbody tr.selected {
+    @apply bg-accent/60;
+}
+
+.sitemap-table td strong {
+    @apply text-foreground;
+}
+
 .statusbar {
     @apply flex items-center gap-[7px] border-t border-border px-3 text-[9px] text-muted-foreground;
     background: hsl(var(--panel));
@@ -671,6 +828,95 @@
 
 .empty-inspector p {
     @apply m-0 text-[10px] leading-normal;
+}
+
+.dialog-backdrop {
+    @apply fixed inset-0 z-50 grid place-items-center bg-[#07142e]/45 p-5;
+    backdrop-filter: blur(4px);
+}
+
+.new-sitemap-dialog {
+    @apply w-full max-w-[690px] overflow-hidden rounded-xl border border-border bg-card;
+    box-shadow: 0 24px 70px rgb(7 20 46 / .32);
+}
+
+.new-sitemap-dialog > header {
+    @apply flex items-start justify-between border-b border-border px-6 py-5;
+}
+
+.new-sitemap-dialog header h2 {
+    @apply mb-1 mt-1 text-xl tracking-[-.025em];
+}
+
+.new-sitemap-dialog header p {
+    @apply m-0 text-xs text-muted-foreground;
+}
+
+.new-sitemap-dialog > header button {
+    @apply -mr-2 -mt-1 text-muted-foreground;
+}
+
+.template-options {
+    @apply grid grid-cols-2 gap-2 border-b border-border p-5;
+}
+
+.template-option {
+    @apply relative flex min-h-[94px] cursor-pointer items-start gap-3 rounded-[9px] border border-border bg-background p-3 text-left;
+    transition: border-color .15s, background-color .15s, box-shadow .15s;
+}
+
+.template-option:hover {
+    @apply border-primary/50 bg-accent/40;
+}
+
+.template-option.selected {
+    @apply border-primary bg-accent/50;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / .12);
+}
+
+.template-check {
+    @apply grid size-[18px] shrink-0 place-items-center rounded-full border border-input text-white;
+}
+
+.template-option.selected .template-check {
+    @apply border-primary bg-primary;
+}
+
+.template-option strong,
+.template-option small {
+    @apply block;
+}
+
+.template-option strong {
+    @apply text-xs text-foreground;
+}
+
+.template-option small {
+    @apply mt-1 pr-3 text-[10px] leading-[1.35] text-muted-foreground;
+}
+
+.template-option em {
+    @apply absolute bottom-3 right-3 text-[9px] not-italic text-muted-foreground;
+}
+
+.new-sitemap-fields {
+    @apply grid grid-cols-3 gap-3 px-5 py-5;
+}
+
+.new-sitemap-fields label {
+    @apply flex flex-col gap-1.5 text-[10px] font-semibold text-muted-foreground;
+}
+
+.new-sitemap-fields input {
+    @apply h-[35px] px-[9px] text-[11px] text-foreground;
+}
+
+.new-sitemap-dialog > footer {
+    @apply flex justify-end gap-2 border-t border-border px-5 py-4;
+}
+
+.new-sitemap-dialog > footer button {
+    @apply h-[34px] text-xs;
 }
 
 @media (max-width: 1180px) {

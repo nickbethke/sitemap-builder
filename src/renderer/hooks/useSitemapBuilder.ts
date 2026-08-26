@@ -2,11 +2,15 @@ import {useTheme} from '@/components/theme-provider.tsx';
 import {ipc} from '@/gen/ipc';
 import {
     createNodeId,
+    createProjectDocument,
+    documentToCsv,
+    documentToXml,
     type LayoutDirection,
     normalizeDocument,
     type SitemapDocument,
     type SitemapNode,
     type SitemapProject,
+    type ProjectTemplateId,
     starterDocument,
 } from '@/lib/sitemap.ts';
 import {
@@ -32,6 +36,8 @@ export function useSitemapBuilder() {
     const [dirty, setDirty] = useState(false);
     const [message, setMessage] = useState('Bereit');
     const [search, setSearch] = useState('');
+    const [past, setPast] = useState<SitemapDocument[]>([]);
+    const [future, setFuture] = useState<SitemapDocument[]>([]);
 
     const selectedNode = document.nodes.find(
         (node) => node.id === selectedId,
@@ -48,10 +54,14 @@ export function useSitemapBuilder() {
     const mutateDocument = useCallback((
         mutation: (current: SitemapDocument) => SitemapDocument,
     ) => {
-        setDocument((current) => ({
-            ...mutation(current),
-            updatedAt: new Date().toISOString(),
-        }));
+        setDocument((current) => {
+            setPast((items) => [...items.slice(-49), current]);
+            setFuture([]);
+            return {
+                ...mutation(current),
+                updatedAt: new Date().toISOString(),
+            };
+        });
         setDirty(true);
     }, []);
 
@@ -75,6 +85,7 @@ export function useSitemapBuilder() {
             }
 
             setCurrentPath(result.path);
+            localStorage.removeItem('sitemap-builder-autosave');
             setDirty(false);
             setMessage(`Gespeichert: ${result.path.split('/').pop()}`);
         } catch (error) {
@@ -93,8 +104,11 @@ export function useSitemapBuilder() {
         }
 
         setDocument(normalizeDocument(next));
+        setPast([]);
+        setFuture([]);
         setSelectedId(next.nodes[0]?.id ?? '');
         setCurrentPath(path);
+        localStorage.removeItem('sitemap-builder-autosave');
         setDirty(false);
         setMessage(`Geöffnet: ${path.split('/').pop()}`);
     }, []);
@@ -138,6 +152,16 @@ export function useSitemapBuilder() {
             .then((result) => {
                 if (!result.canceled) {
                     loadSitemap(result.path, result.payload);
+                    return;
+                }
+                const autosave = localStorage.getItem('sitemap-builder-autosave');
+                if (autosave && window.confirm('Automatisch gesicherte Sitemap wiederherstellen?')) {
+                    const recovered = JSON.parse(autosave) as {document: SitemapDocument; currentPath: string};
+                    setDocument(normalizeDocument(recovered.document));
+                    setSelectedId(recovered.document.nodes[0]?.id ?? '');
+                    setCurrentPath(recovered.currentPath ?? '');
+                    setDirty(true);
+                    setMessage('Automatische Sicherung wiederhergestellt');
                 }
             })
             .catch((error: unknown) => {
@@ -151,20 +175,69 @@ export function useSitemapBuilder() {
         return () => subscription.unsubscribe();
     }, [loadSitemap]);
 
+    const undo = useCallback(() => {
+        setPast((items) => {
+            const previous = items.at(-1);
+            if (!previous) return items;
+            setDocument((current) => {
+                setFuture((next) => [current, ...next].slice(0, 50));
+                return previous;
+            });
+            setDirty(true);
+            setMessage('Änderung rückgängig gemacht');
+            return items.slice(0, -1);
+        });
+    }, []);
+
+    const redo = useCallback(() => {
+        setFuture((items) => {
+            const next = items[0];
+            if (!next) return items;
+            setDocument((current) => {
+                setPast((previous) => [...previous.slice(-49), current]);
+                return next;
+            });
+            setDirty(true);
+            setMessage('Änderung wiederholt');
+            return items.slice(1);
+        });
+    }, []);
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
-            if (
-                (event.metaKey || event.ctrlKey)
-                && event.key.toLowerCase() === 's'
-            ) {
+            if (!event.metaKey && !event.ctrlKey) return;
+            const key = event.key.toLowerCase();
+            if (key === 's') {
                 event.preventDefault();
                 void save(event.shiftKey);
+            } else if (key === 'z') {
+                event.preventDefault();
+                if (event.shiftKey) redo(); else undo();
             }
         };
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [save]);
+    }, [redo, save, undo]);
+
+    useEffect(() => {
+        if (!dirty) return;
+        const timeout = window.setTimeout(() => {
+            localStorage.setItem('sitemap-builder-autosave', JSON.stringify({document, currentPath}));
+            setMessage('Automatisch gesichert');
+        }, 800);
+        return () => window.clearTimeout(timeout);
+    }, [currentPath, dirty, document]);
+
+    useEffect(() => {
+        const warnBeforeClose = (event: BeforeUnloadEvent) => {
+            if (!dirty) return;
+            event.preventDefault();
+            event.returnValue = '';
+        };
+        window.addEventListener('beforeunload', warnBeforeClose);
+        return () => window.removeEventListener('beforeunload', warnBeforeClose);
+    }, [dirty]);
 
     const updateProject = (project: SitemapProject) => {
         mutateDocument((current) => ({
@@ -173,17 +246,32 @@ export function useSitemapBuilder() {
         }));
     };
 
-    const updateNode = <K extends keyof SitemapNode>(
+    const updateNodeById = <K extends keyof SitemapNode>(
+        nodeId: string,
         key: K,
         value: SitemapNode[K],
     ) => {
         mutateDocument((current) => ({
             ...current,
             nodes: current.nodes.map((node) => (
-                node.id === selectedId
-                    ? {...node, [key]: value}
-                    : node
+                node.id === nodeId ? {...node, [key]: value} : node
             )),
+        }));
+    };
+
+    const updateNode = <K extends keyof SitemapNode>(key: K, value: SitemapNode[K]) => {
+        updateNodeById(selectedId, key, value);
+    };
+
+    const updateNodes = <K extends keyof SitemapNode>(
+        nodeIds: string[],
+        key: K,
+        value: SitemapNode[K],
+    ) => {
+        const ids = new Set(nodeIds);
+        mutateDocument((current) => ({
+            ...current,
+            nodes: current.nodes.map((node) => ids.has(node.id) ? {...node, [key]: value} : node),
         }));
     };
 
@@ -306,6 +394,17 @@ export function useSitemapBuilder() {
         const source = document.nodes.find((node) => node.id === nodeId);
         if (!source || source.parentId === null) return;
 
+        const descendantCount = document.nodes.filter((node) => {
+            let cursor = node;
+            while (cursor.parentId) {
+                if (cursor.parentId === source.id) return true;
+                cursor = document.nodes.find((item) => item.id === cursor.parentId) ?? {...cursor, parentId: null};
+            }
+            return false;
+        }).length;
+        const detail = descendantCount ? ` und ${descendantCount} Unterseite(n)` : '';
+        if (!window.confirm(`„${source.title}“${detail} wirklich löschen?`)) return;
+
         const ids = new Set([source.id]);
         let changed = true;
         while (changed) {
@@ -368,28 +467,26 @@ export function useSitemapBuilder() {
         setDropTargetId(null);
     };
 
-    const newProject = () => {
-        const root: SitemapNode = {
-            ...starterDocument.nodes[0],
-            id: createNodeId(),
-            title: 'Startseite',
-            parentId: null,
-        };
-        const nextDocument: SitemapDocument = {
-            ...starterDocument,
-            project: {
-                name: 'Neue Sitemap',
-                baseUrl: 'https://',
-                client: '',
-            },
-            nodes: [root],
-        };
+    const newProject = (
+        templateId: ProjectTemplateId,
+        project: SitemapProject,
+    ) => {
+        const nextDocument = createProjectDocument(templateId, project);
 
         setDocument(normalizeDocument(nextDocument));
-        setSelectedId(root.id);
+        setPast([]);
+        setFuture([]);
+        setSelectedId(nextDocument.nodes[0]?.id ?? '');
         setCurrentPath('');
         setDirty(true);
-        setMessage('Neue Sitemap');
+        setMessage(`Neue Sitemap: ${project.name}`);
+    };
+
+    const exportFile = async (format: 'xml' | 'csv') => {
+        const content = format === 'xml' ? documentToXml(document) : documentToCsv(document);
+        const suggestedName = document.project.name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-|-$/g, '') || 'sitemap';
+        const result = await ipc.app.ExportFile({content, format, suggestedName});
+        setMessage(result.canceled ? 'Export abgebrochen' : `Exportiert: ${result.path.split('/').pop()}`);
     };
 
     return {
@@ -405,6 +502,8 @@ export function useSitemapBuilder() {
         dirty,
         message,
         search,
+        canUndo: past.length > 0,
+        canRedo: future.length > 0,
         canMoveUp: selectedSiblingIndex > 0,
         canMoveDown: selectedSiblingIndex >= 0
             && selectedSiblingIndex < selectedSiblings.length - 1,
@@ -416,9 +515,14 @@ export function useSitemapBuilder() {
         setSearch,
         toggleTheme,
         save,
+        undo,
+        redo,
+        exportFile,
         open,
         updateProject,
         updateNode,
+        updateNodeById,
+        updateNodes,
         addChild,
         duplicateNode,
         moveSelectedSibling,

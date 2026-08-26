@@ -1,9 +1,11 @@
 import {Inspector} from '@/components/sitemap/Inspector.tsx';
 import {LeftSidebar} from '@/components/sitemap/LeftSidebar.tsx';
+import {NewSitemapDialog} from '@/components/sitemap/NewSitemapDialog.tsx';
 import {Topbar} from '@/components/sitemap/Topbar.tsx';
 import {Workspace} from '@/components/sitemap/Workspace.tsx';
 import {ThemeProvider} from '@/components/theme-provider.tsx';
 import {useSitemapBuilder} from '@/hooks/useSitemapBuilder.ts';
+import {useState} from 'react';
 
 function App() {
     return (
@@ -15,6 +17,7 @@ function App() {
 
 function SitemapBuilder() {
     const sitemap = useSitemapBuilder();
+    const [newSitemapOpen, setNewSitemapOpen] = useState(false);
 
     return (
         <div className="app-shell">
@@ -29,14 +32,19 @@ function SitemapBuilder() {
                 onThemeToggle={() => void sitemap.toggleTheme()}
                 onOpen={() => void sitemap.open()}
                 onSave={() => void sitemap.save(false)}
+                onUndo={sitemap.undo}
+                onRedo={sitemap.redo}
+                canUndo={sitemap.canUndo}
+                canRedo={sitemap.canRedo}
             />
 
             <LeftSidebar
                 project={sitemap.document.project}
                 onProjectChange={sitemap.updateProject}
-                onNewProject={sitemap.newProject}
+                onNewProject={() => setNewSitemapOpen(true)}
                 onOpen={() => void sitemap.open()}
                 onSaveAs={() => void sitemap.save(true)}
+                onExport={(format) => void sitemap.exportFile(format)}
             />
 
             <Workspace
@@ -62,6 +70,8 @@ function SitemapBuilder() {
                 onDropTargetChange={sitemap.setDropTargetId}
                 canMoveTo={sitemap.canMoveTo}
                 onDropNode={sitemap.dropOn}
+                onUpdateNode={sitemap.updateNodeById}
+                onUpdateNodes={sitemap.updateNodes}
             />
 
             <Inspector
@@ -74,6 +84,13 @@ function SitemapBuilder() {
                 onDuplicate={() => sitemap.duplicateNode()}
                 onDelete={() => sitemap.deleteNode()}
             />
+
+            {newSitemapOpen && (
+                <NewSitemapDialog
+                    onClose={() => setNewSitemapOpen(false)}
+                    onCreate={sitemap.newProject}
+                />
+            )}
         </div>
     );
 }
