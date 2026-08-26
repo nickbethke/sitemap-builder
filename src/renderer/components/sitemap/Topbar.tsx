@@ -1,6 +1,6 @@
 import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
-import {FolderOpen, LayoutDashboard, Moon, Save, Sun} from 'lucide-react';
+import {FolderOpen, Moon, Save, Sun} from 'lucide-react';
 
 type TopbarProps = {
     projectName: string;
@@ -25,7 +25,7 @@ export function Topbar({
         <header className="topbar">
             <div className="brand">
                 <div className="brand-mark">
-                    <LayoutDashboard size={18}/>
+                    <img src="/logo.svg" alt="" className="size-full"/>
                 </div>
                 <div>
                     <strong>Sitemap Builder</strong>

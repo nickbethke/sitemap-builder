@@ -4,54 +4,67 @@
 
 @layer base {
     :root {
-        --background: 220 22% 97%;
-        --foreground: 222 35% 12%;
+        /* Sitemap Builder — Logo palette */
+        --background: 216 60% 98%;
+        --foreground: 220 74% 10%;
         --card: 0 0% 100%;
-        --card-foreground: 222 35% 12%;
+        --card-foreground: 220 74% 10%;
         --popover: 0 0% 100%;
-        --popover-foreground: 222 35% 12%;
-        --primary: 246 78% 60%;
+        --popover-foreground: 220 74% 10%;
+        --primary: 221 100% 57%;          /* #2368FF electric blue */
         --primary-foreground: 0 0% 100%;
-        --secondary: 224 24% 94%;
-        --secondary-foreground: 222 35% 15%;
-        --muted: 220 18% 95%;
-        --muted-foreground: 218 12% 45%;
-        --accent: 246 45% 94%;
-        --accent-foreground: 246 62% 45%;
+        --secondary: 216 48% 95%;
+        --secondary-foreground: 218 66% 18%;
+        --muted: 216 38% 96%;
+        --muted-foreground: 218 16% 44%;
+        --accent: 194 100% 95%;           /* cyan tint */
+        --accent-foreground: 221 100% 45%;
         --destructive: 0 72% 53%;
         --destructive-foreground: 0 0% 100%;
-        --border: 220 17% 88%;
-        --input: 220 17% 84%;
-        --ring: 246 78% 60%;
+        --border: 216 28% 88%;
+        --input: 216 26% 83%;
+        --ring: 194 100% 55%;             /* #18C8FF cyan */
         --radius: .65rem;
         --panel: 0 0% 100%;
-        --canvas: 220 28% 96%;
-        --line: 220 14% 76%;
+        --canvas: 216 48% 97%;
+        --line: 218 22% 76%;
+
+        --brand-cyan: 194 100% 55%;       /* #18C8FF */
+        --brand-blue: 221 100% 57%;       /* #2368FF */
+        --brand-violet: 255 100% 62%;     /* #6D3CFF */
+        --brand-teal: 169 82% 49%;        /* #16E2BE */
+        --brand-navy: 220 74% 10%;        /* #07142E */
     }
 
     .dark {
-        --background: 225 20% 9%;
-        --foreground: 220 20% 94%;
-        --card: 224 19% 13%;
-        --card-foreground: 220 20% 94%;
-        --popover: 224 19% 13%;
-        --popover-foreground: 220 20% 94%;
-        --primary: 247 84% 68%;
-        --primary-foreground: 230 25% 10%;
-        --secondary: 224 17% 18%;
-        --secondary-foreground: 220 20% 94%;
-        --muted: 224 17% 17%;
-        --muted-foreground: 220 11% 62%;
-        --accent: 245 28% 21%;
-        --accent-foreground: 246 76% 78%;
+        --background: 220 74% 8%;
+        --foreground: 216 40% 96%;
+        --card: 218 66% 14%;
+        --card-foreground: 216 40% 96%;
+        --popover: 218 66% 14%;
+        --popover-foreground: 216 40% 96%;
+        --primary: 221 100% 64%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 218 48% 18%;
+        --secondary-foreground: 216 40% 96%;
+        --muted: 218 42% 16%;
+        --muted-foreground: 214 18% 66%;
+        --accent: 218 58% 21%;
+        --accent-foreground: 194 100% 72%;
         --destructive: 0 62% 43%;
         --destructive-foreground: 0 0% 100%;
-        --border: 224 15% 22%;
-        --input: 224 15% 26%;
-        --ring: 247 84% 68%;
-        --panel: 224 19% 12%;
-        --canvas: 226 20% 10%;
-        --line: 224 13% 30%;
+        --border: 218 34% 24%;
+        --input: 218 32% 28%;
+        --ring: 194 100% 55%;
+        --panel: 218 66% 12%;
+        --canvas: 220 74% 9%;
+        --line: 218 26% 32%;
+
+        --brand-cyan: 194 100% 55%;
+        --brand-blue: 221 100% 64%;
+        --brand-violet: 255 100% 68%;
+        --brand-teal: 169 82% 54%;
+        --brand-navy: 220 74% 10%;
     }
 
     * {
@@ -101,8 +114,8 @@
 
 .brand-mark {
     @apply grid size-[34px] place-items-center rounded-[10px] text-white;
-    background: linear-gradient(145deg, #7768ee, #5545d9);
-    box-shadow: 0 5px 16px rgb(92 72 220 / .26);
+    background: linear-gradient(145deg, #18c8ff 0%, #2368ff 55%, #6d3cff 100%);
+    box-shadow: 0 5px 18px rgb(35 104 255 / .28), 0 0 0 1px rgb(24 200 255 / .10);
 }
 
 .brand strong,
@@ -219,8 +232,8 @@
 }
 
 .dot.high {
-    background: #6d5ee8;
-    box-shadow: 0 0 0 3px rgb(109 94 232 / .12);
+    background: #2368ff;
+    box-shadow: 0 0 0 3px rgb(35 104 255 / .12);
 }
 
 .dot.medium {
@@ -356,13 +369,13 @@
 
 .sitemap-card.selected {
     @apply border-primary;
-    box-shadow: 0 0 0 2px hsl(var(--primary) / .14), 0 9px 25px rgb(77 63 190 / .12);
+    box-shadow: 0 0 0 2px hsl(var(--primary) / .16), 0 9px 25px rgb(35 104 255 / .14);
 }
 
 .sitemap-card.drop-target {
-    @apply border-[#22a777];
+    @apply border-[#16e2be];
     transform: scale(1.035);
-    box-shadow: 0 0 0 3px rgb(34 167 119 / .16);
+    box-shadow: 0 0 0 3px rgb(22 226 190 / .16);
 }
 
 .sitemap-card.search-dimmed {
@@ -415,8 +428,8 @@
 }
 
 .badge-high {
-    color: #6554d9;
-    background: rgb(109 94 232 / .12);
+    color: #2368ff;
+    background: rgb(35 104 255 / .12);
 }
 
 .badge-medium {
@@ -435,7 +448,7 @@
 }
 
 .dark .badge-high {
-    color: #a99dfb;
+    color: #78dfff;
 }
 
 .dark .badge-medium {
@@ -467,15 +480,15 @@
 }
 
 .status-dot i {
-    @apply size-[5px] rounded-full bg-[#58aa82];
+    @apply size-[5px] rounded-full bg-[#16e2be];
 }
 
 .child-count {
     @apply absolute right-[-14px] flex h-7 min-w-7 items-center justify-center gap-0.5 rounded-full border border-primary/30 bg-card px-1 text-[9px] font-semibold text-primary;
     top: calc(50% - 14px);
     box-shadow:
-        0 0 0 3px hsl(var(--canvas)),
-        0 4px 12px rgb(56 43 135 / .16);
+            0 0 0 3px hsl(var(--canvas)),
+            0 4px 12px rgb(35 104 255 / .16);
 }
 
 .child-count svg {
@@ -498,7 +511,7 @@
 }
 
 .status-indicator {
-    @apply size-1.5 rounded-full bg-[#52aa80];
+    @apply size-1.5 rounded-full bg-[#16e2be];
 }
 
 .file-path {
