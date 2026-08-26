@@ -7,7 +7,7 @@
 
   Sitemap Builder ist eine Desktop-App für Informationsarchitektur, Content-Planung und Website-Relaunches. Seiten lassen sich auf einem visuellen Canvas organisieren, in einer Tabelle bearbeiten, auf Qualitätsprobleme prüfen und als XML oder CSV exportieren.
 
-  [![macOS DMG](https://github.com/nickbethke/sitemap-builder/actions/workflows/release.yml/badge.svg)](https://github.com/nickbethke/sitemap-builder/actions/workflows/release.yml)
+  [![Release builds](https://github.com/nickbethke/sitemap-builder/actions/workflows/release.yml/badge.svg)](https://github.com/nickbethke/sitemap-builder/actions/workflows/release.yml)
   [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![MōBrowser](https://img.shields.io/badge/M%C5%8DBrowser-2.14-111827)](https://mobrowser.dev/)
@@ -66,7 +66,11 @@ Die integrierte Qualitätsprüfung erkennt unter anderem:
 
 ## Download
 
-Fertige macOS-DMGs stehen unter [GitHub Releases](https://github.com/nickbethke/sitemap-builder/releases) bereit. Nach Download DMG öffnen und Sitemap Builder in Programme ziehen.
+Fertige Pakete stehen unter [GitHub Releases](https://github.com/nickbethke/sitemap-builder/releases) bereit:
+
+- **macOS:** DMG öffnen und Sitemap Builder in Programme ziehen
+- **Windows:** EXE-Installer ausführen
+- **Linux x64:** Tarball entpacken und enthaltene Anwendung starten
 
 > Falls noch kein Release verfügbar ist, App wie unten beschrieben lokal bauen.
 
@@ -101,7 +105,7 @@ Build-Ausgabe landet unter `build/dist/<platform>-<arch>/bin`.
 npm run pack
 ```
 
-Auf macOS entsteht ein DMG unter `build/dist/mac-<arch>/pack`.
+Auf macOS entsteht ein DMG, auf Windows ein EXE-Installer. Linux-Builds werden in GitHub Actions als `.tar.gz` archiviert.
 
 ## Nützliche Befehle
 

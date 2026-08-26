@@ -1,6 +1,6 @@
-# Build macOS DMG artifacts and draft a GitHub Release for version tags.
+# Build macOS, Windows, and Linux artifacts, then draft a release for version tags.
 # Requires committed package-lock.json (npm ci).
-name: Release macOS DMG
+name: Release
 
 on:
   push:
@@ -27,7 +27,7 @@ jobs:
       MAC_APPLE_PASSWORD: ${{ secrets.MAC_APPLE_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Verify signing secrets
         shell: bash
@@ -58,7 +58,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -94,18 +94,105 @@ jobs:
       - name: Pack DMG
         run: npm run pack -- --verbose
 
-      - name: Upload DMG artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v6
         with:
-          name: sitemap-builder-macos-dmg
-          path: build/dist/mac-*/pack/*.dmg
+          name: artifacts-macos
+          path: |
+            build/dist/mac-*/pack/*.dmg
+            build/dist/mac-*/pack/*.nupkg
+            build/dist/mac-*/pack/releases.osx.json
           if-no-files-found: error
 
-      - name: Create draft release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+  build-windows:
+    name: Build Windows x64
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
         with:
-          files: build/dist/mac-*/pack/*.dmg
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build -- --verbose
+
+      - name: Pack Windows installer
+        run: npm run pack -- --verbose
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: artifacts-windows-x64
+          path: |
+            build/dist/win-x64/pack/*.exe
+            build/dist/win-x64/pack/*.nupkg
+            build/dist/win-x64/pack/releases.win.json
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Linux x64
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build -- --verbose
+
+      # MōBrowser currently provides no native Linux installer.
+      - name: Pack Linux binaries
+        run: tar -czf sitemap-builder-linux-x64.tar.gz -C build/dist/linux-x64/bin .
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: artifacts-linux-x64
+          path: sitemap-builder-linux-x64.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release draft
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs:
+      - build-macos
+      - build-windows
+      - build-linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: dist
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          files: |
+            dist/artifacts-macos/**/*.dmg
+            dist/artifacts-macos/**/*.nupkg
+            dist/artifacts-macos/**/releases.osx.json
+            dist/artifacts-windows-x64/**/*.exe
+            dist/artifacts-windows-x64/**/*.nupkg
+            dist/artifacts-windows-x64/**/releases.win.json
+            dist/artifacts-linux-x64/**/*.tar.gz
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           draft: true
+
+      - name: List release artifacts
+        run: find dist -type f -print
