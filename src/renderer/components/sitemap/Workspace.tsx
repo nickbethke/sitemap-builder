@@ -399,7 +399,12 @@ export function Workspace({
                                 >
                                     <Minus size={14}/>
                                 </button>
-                                <span>{Math.round(zoom * 100)}%</span>
+                                <span
+                                    title="Doppelklick: Zoom auf 100 % zurücksetzen"
+                                    onDoubleClick={() => onZoomChange(1)}
+                                >
+                                    {Math.round(zoom * 100)}%
+                                </span>
                                 <button
                                     aria-label="Vergrößern"
                                     onClick={() => onZoomChange(Math.min(1.25, zoom + 0.1))}
