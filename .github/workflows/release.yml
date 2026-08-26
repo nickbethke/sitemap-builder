@@ -1,0 +1,111 @@
+# Build macOS DMG artifacts and draft a GitHub Release for version tags.
+# Requires committed package-lock.json (npm ci).
+name: Release macOS DMG
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    environment: production
+    runs-on: macos-latest
+
+    env:
+      # Optional signing/notarization secrets. Unsigned DMG built when MAC_CERTIFICATE is empty.
+      MAC_CERTIFICATE: ${{ secrets.MAC_CERTIFICATE }}
+      MAC_CERTIFICATE_PWD: ${{ secrets.MAC_CERTIFICATE_PWD }}
+      MAC_KEYCHAIN_PWD: ${{ secrets.MAC_KEYCHAIN_PWD }}
+      MAC_CODESIGN_IDENTITY: ${{ secrets.MAC_CODESIGN_IDENTITY }}
+      MAC_TEAM_ID: ${{ secrets.MAC_TEAM_ID }}
+      MAC_APPLE_ID: ${{ secrets.MAC_APPLE_ID }}
+      MAC_APPLE_PASSWORD: ${{ secrets.MAC_APPLE_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify signing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${MAC_CERTIFICATE:-}" ]; then
+            echo "MAC_CERTIFICATE not set; building unsigned DMG."
+            {
+              echo "MAC_CERTIFICATE_PWD="
+              echo "MAC_KEYCHAIN_PWD="
+              echo "MAC_CODESIGN_IDENTITY="
+              echo "MAC_TEAM_ID="
+              echo "MAC_APPLE_ID="
+              echo "MAC_APPLE_PASSWORD="
+            } >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          missing=()
+          [ -z "${MAC_CERTIFICATE_PWD:-}" ] && missing+=(MAC_CERTIFICATE_PWD)
+          [ -z "${MAC_KEYCHAIN_PWD:-}" ] && missing+=(MAC_KEYCHAIN_PWD)
+          [ -z "${MAC_CODESIGN_IDENTITY:-}" ] && missing+=(MAC_CODESIGN_IDENTITY)
+          [ -z "${MAC_TEAM_ID:-}" ] && missing+=(MAC_TEAM_ID)
+          [ -z "${MAC_APPLE_ID:-}" ] && missing+=(MAC_APPLE_ID)
+          [ -z "${MAC_APPLE_PASSWORD:-}" ] && missing+=(MAC_APPLE_PASSWORD)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required signing secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import signing certificate
+        if: env.MAC_CERTIFICATE != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p "$MAC_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$MAC_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+
+          curl -fsSL https://www.apple.com/certificateauthority/AppleRootCA-G3.cer -o "$RUNNER_TEMP/AppleRootCA-G3.cer"
+          curl -fsSL https://www.apple.com/certificateauthority/AppleWWDRCAG6.cer -o "$RUNNER_TEMP/AppleWWDRCAG6.cer"
+          curl -fsSL https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer -o "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security import "$RUNNER_TEMP/AppleRootCA-G3.cer" -k "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/AppleWWDRCAG6.cer" -k "$KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN_PATH"
+
+          echo "$MAC_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN_PATH" -P "$MAC_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$MAC_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+      - name: Build application
+        run: npm run build -- --verbose
+
+      - name: Pack DMG
+        run: npm run pack -- --verbose
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sitemap-builder-macos-dmg
+          path: build/dist/mac-*/pack/*.dmg
+          if-no-files-found: error
+
+      - name: Create draft release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+        with:
+          files: build/dist/mac-*/pack/*.dmg
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          draft: true
