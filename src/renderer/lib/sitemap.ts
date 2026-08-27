@@ -551,23 +551,47 @@ export function validateDocument(document: SitemapDocument): ValidationIssue[] {
 
     document.nodes.forEach((node) => {
         if (!node.title.trim()) issues.push({nodeId: node.id, level: 'error', message: 'Seitentitel fehlt'});
-        if (!node.slug.startsWith('/')) issues.push({nodeId: node.id, level: 'error', message: 'Slug muss mit / beginnen'});
+        if (!node.slug.startsWith('/')) issues.push({
+            nodeId: node.id,
+            level: 'error',
+            message: 'Slug muss mit / beginnen'
+        });
         if (/\s/.test(node.slug)) issues.push({nodeId: node.id, level: 'error', message: 'Slug enthält Leerzeichen'});
-        if ((slugCounts.get(node.slug) ?? 0) > 1) issues.push({nodeId: node.id, level: 'error', message: 'Slug ist doppelt'});
+        if ((slugCounts.get(node.slug) ?? 0) > 1) issues.push({
+            nodeId: node.id,
+            level: 'error',
+            message: 'Slug ist doppelt'
+        });
         if (node.parentId && !document.nodes.some((item) => item.id === node.parentId)) {
             issues.push({nodeId: node.id, level: 'error', message: 'Übergeordnete Seite fehlt'});
         }
-        if (!node.seoTitle?.trim() && !node.noIndex) issues.push({nodeId: node.id, level: 'warning', message: 'SEO-Titel fehlt'});
-        if ((node.seoTitle?.length ?? 0) > 60) issues.push({nodeId: node.id, level: 'warning', message: 'SEO-Titel ist länger als 60 Zeichen'});
-        if (!node.seoDescription?.trim() && !node.noIndex) issues.push({nodeId: node.id, level: 'warning', message: 'SEO-Beschreibung fehlt'});
-        if ((node.seoDescription?.length ?? 0) > 160) issues.push({nodeId: node.id, level: 'warning', message: 'SEO-Beschreibung ist länger als 160 Zeichen'});
+        if (!node.seoTitle?.trim() && !node.noIndex) issues.push({
+            nodeId: node.id,
+            level: 'warning',
+            message: 'SEO-Titel fehlt'
+        });
+        if ((node.seoTitle?.length ?? 0) > 60) issues.push({
+            nodeId: node.id,
+            level: 'warning',
+            message: 'SEO-Titel ist länger als 60 Zeichen'
+        });
+        if (!node.seoDescription?.trim() && !node.noIndex) issues.push({
+            nodeId: node.id,
+            level: 'warning',
+            message: 'SEO-Beschreibung fehlt'
+        });
+        if ((node.seoDescription?.length ?? 0) > 160) issues.push({
+            nodeId: node.id,
+            level: 'warning',
+            message: 'SEO-Beschreibung ist länger als 160 Zeichen'
+        });
     });
     return issues;
 }
 
 export function documentToXml(document: SitemapDocument): string {
     const base = document.project.baseUrl.replace(/\/$/, '');
-    const escape = (value: string) => value.replace(/[<>&'\"]/g, (char) => ({
+    const escape = (value: string) => value.replace(/[<>&'"]/g, (char) => ({
         '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;',
     })[char] ?? char);
     const urls = document.nodes.filter((node) => !node.noIndex).map((node) =>
@@ -581,6 +605,100 @@ export function documentToCsv(document: SitemapDocument): string {
     const header = ['Titel', 'URL', 'Seitentyp', 'Status', 'SEO-Relevanz', 'Verantwortlich', 'SEO-Titel', 'SEO-Beschreibung', 'Noindex', 'Redirect von'];
     const rows = document.nodes.map((node) => [node.title, node.slug, node.pageType, node.status, node.seoImportance, node.owner, node.seoTitle, node.seoDescription, node.noIndex ? 'Ja' : 'Nein', node.redirectFrom]);
     return [header, ...rows].map((row) => row.map(quote).join(';')).join('\n');
+}
+
+function groupByParent(nodes: SitemapNode[]): Map<string | null, SitemapNode[]> {
+    const childrenByParent = new Map<string | null, SitemapNode[]>();
+    nodes.forEach((node) => {
+        childrenByParent.set(node.parentId, [...(childrenByParent.get(node.parentId) ?? []), node]);
+    });
+    return childrenByParent;
+}
+
+export function documentToMarkdown(document: SitemapDocument): string {
+    const childrenByParent = groupByParent(document.nodes);
+    const lines: string[] = [`# ${document.project.name}`, ''];
+    if (document.project.client) lines.push(`Kunde: ${document.project.client}`);
+    if (document.project.baseUrl) lines.push(`Basis-URL: ${document.project.baseUrl}`);
+    lines.push('');
+
+    const walk = (parentId: string | null, depth: number) => {
+        for (const node of childrenByParent.get(parentId) ?? []) {
+            const indent = '  '.repeat(depth);
+            const details = [node.pageType, node.status, `SEO: ${node.seoImportance}`, node.noIndex ? 'Noindex' : null]
+                .filter(Boolean)
+                .join(' · ');
+            lines.push(`${indent}- [${node.title || 'Ohne Titel'}](${node.slug || '/'}) — ${details}`);
+            walk(node.id, depth + 1);
+        }
+    };
+    walk(null, 0);
+
+    return `${lines.join('\n')}\n`;
+}
+
+export function documentToHtml(document: SitemapDocument): string {
+    const childrenByParent = groupByParent(document.nodes);
+    const escape = (value: string) => value.replace(/[<>&]/g, (char) => ({
+        '<': '&lt;', '>': '&gt;', '&': '&amp;',
+    })[char] ?? char);
+    const badgeClass = (value: string) => value.toLowerCase().replace(/\s+/g, '-');
+
+    const renderList = (parentId: string | null): string => {
+        const children = childrenByParent.get(parentId) ?? [];
+        if (children.length === 0) return '';
+
+        const items = children.map((node) => `
+            <li>
+                <div class="node">
+                    <strong>${escape(node.title || 'Ohne Titel')}</strong>
+                    <code>${escape(node.slug || '/')}</code>
+                    <span class="badge badge-${badgeClass(node.status)}">${escape(node.status)}</span>
+                    <span class="badge">${escape(node.pageType)}</span>
+                    <span class="badge badge-seo-${badgeClass(node.seoImportance)}">${escape(node.seoImportance)}</span>
+                    ${node.noIndex ? '<span class="badge badge-noindex">Noindex</span>' : ''}
+                </div>
+                ${renderList(node.id)}
+            </li>`).join('');
+        return `<ul>${items}</ul>`;
+    };
+
+    const metaParts = [document.project.client, document.project.baseUrl].filter(Boolean).map(escape);
+
+    return `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>${escape(document.project.name)} – Sitemap</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 40px; background: #f4f6fb; color: #1a2b4a; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .meta { color: #6b7a99; font-size: 13px; margin-bottom: 28px; }
+  ul { list-style: none; margin: 0; padding-left: 22px; border-left: 1px solid #dde3ef; }
+  body > ul { padding-left: 0; border-left: none; }
+  li { margin: 10px 0; }
+  .node { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: #fff; border: 1px solid #e2e7f2; border-radius: 8px; padding: 8px 12px; }
+  .node strong { font-size: 14px; }
+  .node code { font-size: 11px; color: #2368ff; background: #eef2ff; padding: 2px 6px; border-radius: 4px; }
+  .badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: 2px 8px; border-radius: 999px; background: #eef1f8; color: #55618a; }
+  .badge-fertig { background: #dcfce7; color: #15803d; }
+  .badge-in-arbeit { background: #fef3c7; color: #b45309; }
+  .badge-freigabe { background: #dbeafe; color: #1d4ed8; }
+  .badge-geplant { background: #f1f2f6; color: #55618a; }
+  .badge-seo-hoch { background: #dbeafe; color: #1d4ed8; }
+  .badge-seo-mittel { background: #fef3c7; color: #b45309; }
+  .badge-seo-niedrig { background: #dcfce7; color: #15803d; }
+  .badge-noindex { background: #fee2e2; color: #b91c1c; }
+</style>
+</head>
+<body>
+  <h1>${escape(document.project.name)}</h1>
+  <p class="meta">${metaParts.join(' · ')}</p>
+  ${renderList(null)}
+</body>
+</html>
+`;
 }
 
 export function createNodeId() {

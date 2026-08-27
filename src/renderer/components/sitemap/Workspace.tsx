@@ -5,6 +5,7 @@ import {Checkbox} from '@/components/ui/checkbox.tsx';
 import {Input} from '@/components/ui/input.tsx';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table.tsx';
+import {captureCanvasAsPdfBase64} from '@/lib/canvasExport.ts';
 import {
     layoutNodes,
     PAGE_STATUSES,
@@ -29,7 +30,9 @@ import {
 } from 'lucide-react';
 import {
     type DragEvent,
+    forwardRef,
     useEffect,
+    useImperativeHandle,
     useMemo,
     useRef,
     useState,
@@ -62,6 +65,11 @@ type WorkspaceProps = {
     onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void;
     onUpdateNode: <K extends keyof SitemapNode>(nodeId: string, key: K, value: SitemapNode[K]) => void;
     onUpdateNodes: <K extends keyof SitemapNode>(nodeIds: string[], key: K, value: SitemapNode[K]) => void;
+    onExportPdf: (base64: string) => void;
+};
+
+export type WorkspaceHandle = {
+    exportPdf: () => Promise<void>;
 };
 
 const toolbarSelectClass = 'h-8 w-auto max-w-24 rounded-md border border-border bg-background px-2 text-[10px] text-foreground outline-none';
@@ -71,7 +79,7 @@ const tableFieldClass = 'h-7 w-full min-w-20 rounded-md border border-transparen
 const tableHeaderClass = 'sticky top-0 min-w-24 cursor-pointer overflow-hidden border-b border-border bg-muted px-3 py-2.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground [resize:horizontal]';
 const tableCellClass = 'border-b border-border px-2 py-1.5 text-muted-foreground';
 
-export function Workspace({
+export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Workspace({
     document,
     selectedId,
     draggedId,
@@ -96,7 +104,8 @@ export function Workspace({
     onDropNode,
     onUpdateNode,
     onUpdateNodes,
-}: WorkspaceProps) {
+    onExportPdf,
+}: WorkspaceProps, ref) {
     const [view, setView] = useState<'canvas' | 'table'>('canvas');
     const [statusFilter, setStatusFilter] = useState('Alle');
     const [typeFilter, setTypeFilter] = useState('Alle');
@@ -108,12 +117,23 @@ export function Workspace({
     const [bulkActionKey, setBulkActionKey] = useState(0);
     const [sort, setSort] = useState<{key: keyof SitemapNode; direction: 1 | -1}>({key: 'title', direction: 1});
     const canvasRef = useRef<HTMLDivElement>(null);
+    const canvasContentRef = useRef<HTMLDivElement>(null);
     const [viewport, setViewport] = useState<MiniMapViewport>({scrollLeft: 0, scrollTop: 0, clientWidth: 0, clientHeight: 0});
     const issues = useMemo(() => validateDocument(document), [document]);
     const layout = useMemo(
         () => layoutNodes(document.nodes, layoutDirection),
         [document.nodes, layoutDirection],
     );
+
+    useImperativeHandle(ref, () => ({
+        exportPdf: async () => {
+            const node = canvasContentRef.current;
+            if (!node) return;
+
+            const base64 = await captureCanvasAsPdfBase64(node, layout.width, layout.height);
+            onExportPdf(base64);
+        },
+    }), [layout.height, layout.width, onExportPdf]);
     const visibleNodeIds = useMemo(() => new Set(
         document.nodes
             .filter((node) => `${node.title} ${node.slug} ${node.description} ${node.owner} ${node.notes}`
@@ -210,7 +230,7 @@ export function Workspace({
 
     return (
         <main
-            className="relative col-start-2 grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)_29px] bg-[hsl(var(--canvas))]"
+            className="relative col-start-1 grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)_29px] bg-[hsl(var(--canvas))]"
             style={showIssues ? {gridTemplateRows: `50px minmax(180px, 1fr) ${issuesHeight}px 29px`} : undefined}
         >
             <div className="z-4 flex items-center justify-between border-b border-border bg-[hsl(var(--panel)/.82)] px-3.5 backdrop-blur-md">
@@ -458,6 +478,7 @@ export function Workspace({
                     onClick={() => onSelectNode('')}
                 >
                     <div
+                        ref={canvasContentRef}
                         className="relative origin-top-left transition-transform"
                         style={{
                             width: layout.width,
@@ -573,4 +594,4 @@ export function Workspace({
             </div>
         </main>
     );
-}
+});

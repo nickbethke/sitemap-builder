@@ -1,12 +1,12 @@
 import {Inspector} from '@/components/sitemap/Inspector.tsx';
-import {LeftSidebar} from '@/components/sitemap/LeftSidebar.tsx';
 import {NewSitemapDialog} from '@/components/sitemap/NewSitemapDialog.tsx';
 import {Topbar} from '@/components/sitemap/Topbar.tsx';
-import {Workspace} from '@/components/sitemap/Workspace.tsx';
+import {Workspace, type WorkspaceHandle} from '@/components/sitemap/Workspace.tsx';
 import {ThemeProvider} from '@/components/theme-provider.tsx';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog.tsx';
+import {ipc} from '@/gen/ipc';
 import {useSitemapBuilder} from '@/hooks/useSitemapBuilder.ts';
-import {useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 
 function App() {
     return (
@@ -19,9 +19,31 @@ function App() {
 function SitemapBuilder() {
     const sitemap = useSitemapBuilder();
     const [newSitemapOpen, setNewSitemapOpen] = useState(false);
+    const workspaceRef = useRef<WorkspaceHandle>(null);
+
+    useEffect(() => {
+        const subscription = ipc.menuAction.WatchMenuActions({}).subscribe({
+            next: ({action}) => {
+                switch (action) {
+                    case 'new': setNewSitemapOpen(true); break;
+                    case 'open': void sitemap.open(); break;
+                    case 'save': void sitemap.save(false); break;
+                    case 'save-as': void sitemap.save(true); break;
+                    case 'undo': sitemap.undo(); break;
+                    case 'redo': sitemap.redo(); break;
+                    case 'export-xml': void sitemap.exportFile('xml'); break;
+                    case 'export-csv': void sitemap.exportFile('csv'); break;
+                    case 'export-md': void sitemap.exportFile('md'); break;
+                    case 'export-html': void sitemap.exportFile('html'); break;
+                    case 'export-pdf': void workspaceRef.current?.exportPdf(); break;
+                }
+            },
+        });
+        return () => subscription.unsubscribe();
+    }, [sitemap]);
 
     return (
-        <div className="grid h-screen grid-cols-[214px_minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[180px_minmax(500px,1fr)_285px]">
+        <div className="grid h-screen grid-cols-[minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[minmax(500px,1fr)_285px]">
             <Topbar
                 projectName={sitemap.document.project.name}
                 dirty={sitemap.dirty}
@@ -39,16 +61,8 @@ function SitemapBuilder() {
                 canRedo={sitemap.canRedo}
             />
 
-            <LeftSidebar
-                project={sitemap.document.project}
-                onProjectChange={sitemap.updateProject}
-                onNewProject={() => setNewSitemapOpen(true)}
-                onOpen={() => void sitemap.open()}
-                onSaveAs={() => void sitemap.save(true)}
-                onExport={(format) => void sitemap.exportFile(format)}
-            />
-
             <Workspace
+                ref={workspaceRef}
                 document={sitemap.document}
                 selectedId={sitemap.selectedId}
                 draggedId={sitemap.draggedId}
@@ -73,10 +87,13 @@ function SitemapBuilder() {
                 onDropNode={sitemap.dropOn}
                 onUpdateNode={sitemap.updateNodeById}
                 onUpdateNodes={sitemap.updateNodes}
+                onExportPdf={sitemap.exportPdf}
             />
 
             <Inspector
                 selectedNode={sitemap.selectedNode}
+                project={sitemap.document.project}
+                onProjectChange={sitemap.updateProject}
                 canMoveUp={sitemap.canMoveUp}
                 canMoveDown={sitemap.canMoveDown}
                 onUpdateNode={sitemap.updateNode}

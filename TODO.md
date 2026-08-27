@@ -16,9 +16,9 @@
   - [x] XML-Sitemap exportieren
   - [x] CSV-Export für Redaktion und Projektmanagement
   - [ ] Excel-Export für Redaktion und Projektmanagement
-  - [ ] PDF-Export der visuellen Sitemap
-  - [ ] Markdown-Export für Dokumentation
-  - [ ] Statische HTML-Ansicht zum Teilen mit Kunden
+  - [x] PDF-Export der visuellen Sitemap
+  - [x] Markdown-Export für Dokumentation
+  - [x] Statische HTML-Ansicht zum Teilen mit Kunden
 
 - [x] **Undo / Redo**
   - Rückgängig/Wiederholen für alle Bearbeitungen

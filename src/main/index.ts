@@ -1,10 +1,10 @@
-import {app, BrowserWindow, ipc, Theme} from '@mobrowser/api';
+import {app, BrowserWindow, ipc, Menu, MenuItem, MenuWithRole, Theme} from '@mobrowser/api';
 import {readFile, rename, stat, writeFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import * as process from 'node:process';
 import {gzipSync, gunzipSync} from 'node:zlib';
 import {ExportRequest, SaveSitemapRequest, SetThemeRequest} from './gen/app';
-import {AppServiceDescriptor, OpenFileServiceDescriptor} from './gen/ipc_service';
+import {AppServiceDescriptor, MenuActionServiceDescriptor, OpenFileServiceDescriptor} from './gen/ipc_service';
 
 const MAGIC = Buffer.from('SMAP');
 const FORMAT_VERSION = 1;
@@ -12,6 +12,15 @@ const MAX_JSON_SIZE = 10 * 1024 * 1024;
 const MAX_FILE_SIZE = 12 * 1024 * 1024;
 const startupSitemapPath = app.launchInfo.files.find((path) => extname(path).toLowerCase() === '.smap') ?? '';
 const openedSitemaps = ipc.registerService(OpenFileServiceDescriptor);
+const menuActions = ipc.registerService(MenuActionServiceDescriptor);
+
+const EXPORT_FORMATS: Record<string, {extension: string; label: string; binary?: boolean}> = {
+    xml: {extension: 'xml', label: 'XML'},
+    csv: {extension: 'csv', label: 'CSV'},
+    md: {extension: 'md', label: 'Markdown'},
+    html: {extension: 'html', label: 'HTML'},
+    pdf: {extension: 'pdf', label: 'PDF', binary: true},
+};
 
 const win = new BrowserWindow({
     url: app.url,
@@ -104,18 +113,82 @@ ipc.registerService(AppServiceDescriptor, {
         return {canceled: false, ...sitemap};
     },
     async ExportFile(request: ExportRequest) {
-        const extension = request.format === 'xml' ? 'xml' : 'csv';
+        const config = EXPORT_FORMATS[request.format] ?? EXPORT_FORMATS.csv;
         const result = await app.showSaveDialog({
             parentWindow: win,
-            title: `${extension.toUpperCase()} exportieren`,
-            defaultPath: `${request.suggestedName || 'sitemap'}.${extension}`,
-            filters: [{name: `${extension.toUpperCase()} Datei`, extensions: [extension]}],
+            title: `${config.label} exportieren`,
+            defaultPath: `${request.suggestedName || 'sitemap'}.${config.extension}`,
+            filters: [{name: `${config.label} Datei`, extensions: [config.extension]}],
         });
         if (result.canceled || !result.path) return {canceled: true, path: ''};
-        const path = extname(result.path).toLowerCase() === `.${extension}`
+        const path = extname(result.path).toLowerCase() === `.${config.extension}`
             ? result.path
-            : `${result.path}.${extension}`;
-        await writeFile(path, request.content, {encoding: 'utf8', mode: 0o600});
+            : `${result.path}.${config.extension}`;
+        if (config.binary) {
+            await writeFile(path, Buffer.from(request.content, 'base64'), {mode: 0o600});
+        } else {
+            await writeFile(path, request.content, {encoding: 'utf8', mode: 0o600});
+        }
         return {canceled: false, path};
     },
 });
+
+function emitMenuAction(action: string) {
+    menuActions.WatchMenuActions({action});
+}
+
+app.setMenu(new Menu({
+    items: [
+        new MenuWithRole({
+            role: 'macAppMenu',
+            items: ['macHideApp', 'macHideOthers', 'macShowAll', 'separator', 'quit'],
+        }),
+        new MenuWithRole({
+            role: 'fileMenu',
+            items: [
+                new MenuItem({id: 'new', label: 'Neue Sitemap…', shortcut: 'CommandOrControl+N', action: () => emitMenuAction('new')}),
+                new MenuItem({id: 'open', label: 'Öffnen…', shortcut: 'CommandOrControl+O', action: () => emitMenuAction('open')}),
+                'separator',
+                new MenuItem({id: 'save', label: 'Speichern', action: () => emitMenuAction('save')}),
+                new MenuItem({id: 'save-as', label: 'Speichern unter…', shortcut: 'CommandOrControl+Shift+S', action: () => emitMenuAction('save-as')}),
+                'separator',
+                new Menu({
+                    label: 'Exportieren',
+                    items: [
+                        new MenuItem({id: 'export-xml', label: 'XML-Sitemap…', action: () => emitMenuAction('export-xml')}),
+                        new MenuItem({id: 'export-csv', label: 'CSV…', action: () => emitMenuAction('export-csv')}),
+                        new MenuItem({id: 'export-pdf', label: 'PDF…', action: () => emitMenuAction('export-pdf')}),
+                        new MenuItem({id: 'export-md', label: 'Markdown…', action: () => emitMenuAction('export-md')}),
+                        new MenuItem({id: 'export-html', label: 'Statische HTML-Ansicht…', action: () => emitMenuAction('export-html')}),
+                    ],
+                }),
+                'separator',
+                'closeWindow',
+            ],
+        }),
+        new MenuWithRole({
+            role: 'editMenu',
+            items: [
+                new MenuItem({id: 'undo', label: 'Rückgängig', action: () => emitMenuAction('undo')}),
+                new MenuItem({id: 'redo', label: 'Wiederholen', action: () => emitMenuAction('redo')}),
+                'separator',
+                'cut',
+                'copy',
+                'paste',
+                'selectAll',
+            ],
+        }),
+        new MenuWithRole({
+            role: 'viewMenu',
+            items: ['zoomReset', 'zoomIn', 'zoomOut', 'separator', 'fullScreen'],
+        }),
+        new MenuWithRole({
+            role: 'windowMenu',
+            items: ['minimizeWindow', 'maximizeWindow'],
+        }),
+        new MenuWithRole({
+            role: 'helpMenu',
+            items: [],
+        }),
+    ],
+}));

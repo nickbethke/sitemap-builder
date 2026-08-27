@@ -4,6 +4,8 @@ import {
     createNodeId,
     createProjectDocument,
     documentToCsv,
+    documentToHtml,
+    documentToMarkdown,
     documentToXml,
     type LayoutDirection,
     normalizeDocument,
@@ -514,10 +516,21 @@ export function useSitemapBuilder() {
         setMessage(`Neue Sitemap: ${project.name}`);
     };
 
-    const exportFile = async (format: 'xml' | 'csv') => {
-        const content = format === 'xml' ? documentToXml(document) : documentToCsv(document);
-        const suggestedName = document.project.name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-|-$/g, '') || 'sitemap';
-        const result = await ipc.app.ExportFile({content, format, suggestedName});
+    const suggestedExportName = () => document.project.name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-|-$/g, '') || 'sitemap';
+
+    const exportFile = async (format: 'xml' | 'csv' | 'md' | 'html') => {
+        const content = {
+            xml: documentToXml,
+            csv: documentToCsv,
+            md: documentToMarkdown,
+            html: documentToHtml,
+        }[format](document);
+        const result = await ipc.app.ExportFile({content, format, suggestedName: suggestedExportName()});
+        setMessage(result.canceled ? 'Export abgebrochen' : `Exportiert: ${result.path.split('/').pop()}`);
+    };
+
+    const exportPdf = async (base64: string) => {
+        const result = await ipc.app.ExportFile({content: base64, format: 'pdf', suggestedName: suggestedExportName()});
         setMessage(result.canceled ? 'Export abgebrochen' : `Exportiert: ${result.path.split('/').pop()}`);
     };
 
@@ -552,6 +565,7 @@ export function useSitemapBuilder() {
         undo,
         redo,
         exportFile,
+        exportPdf,
         open,
         updateProject,
         updateNode,

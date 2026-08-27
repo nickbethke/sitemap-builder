@@ -51,3 +51,11 @@ service AppService {
 service OpenFileService {
   rpc WatchOpenedSitemaps(google.protobuf.Empty) returns (stream OpenedSitemap);
 }
+
+message MenuAction {
+  string action = 1;
+}
+
+service MenuActionService {
+  rpc WatchMenuActions(google.protobuf.Empty) returns (stream MenuAction);
+}

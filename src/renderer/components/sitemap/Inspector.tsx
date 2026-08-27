@@ -12,13 +12,16 @@ import {
     type PageType,
     type SeoImportance,
     type SitemapNode,
+    type SitemapProject,
     type UpdateNode,
 } from '@/lib/sitemap.ts';
-import {ArrowDown, ArrowUp, Copy, LayoutDashboard, Trash2} from 'lucide-react';
+import {ArrowDown, ArrowUp, CircleHelp, Copy, Trash2} from 'lucide-react';
 import type React from 'react';
 
 type InspectorProps = {
     selectedNode: SitemapNode | null;
+    project: SitemapProject;
+    onProjectChange: (project: SitemapProject) => void;
     canMoveUp: boolean;
     canMoveDown: boolean;
     onUpdateNode: UpdateNode;
@@ -28,7 +31,7 @@ type InspectorProps = {
     onDelete: () => void;
 };
 
-const inspectorClass = 'col-start-3 grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] border-l border-border bg-[hsl(var(--panel))]';
+const inspectorClass = 'col-start-2 grid min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] border-l border-border bg-[hsl(var(--panel))]';
 const eyebrowClass = 'block text-[9px] font-bold uppercase tracking-widest text-muted-foreground';
 const formGroupClass = 'flex flex-col gap-3';
 const labelClass = 'flex flex-col gap-1.5 text-[10px] font-semibold text-muted-foreground';
@@ -38,6 +41,8 @@ const formGridClass = 'grid grid-cols-2 gap-x-2.5 gap-y-3';
 
 export function Inspector({
     selectedNode,
+    project,
+    onProjectChange,
     canMoveUp,
     canMoveDown,
     onUpdateNode,
@@ -49,11 +54,58 @@ export function Inspector({
     if (!selectedNode) {
         return (
             <aside className={inspectorClass}>
-                <div className="self-center p-10 text-center text-muted-foreground">
-                    <LayoutDashboard className="mx-auto size-9 rounded-lg bg-accent p-2 text-primary"/>
-                    <h2 className="mb-1 mt-3 text-sm text-foreground">Seite auswählen</h2>
-                    <p className="m-0 text-[10px] leading-normal">
-                        Karte anklicken, um Seitendetails zu bearbeiten.
+                <div className="flex items-start justify-between border-b border-border px-5 pb-4 pt-5">
+                    <div>
+                        <span className={eyebrowClass}>Keine Seite ausgewählt</span>
+                        <h2 className="mb-0 mt-1 text-base tracking-tight">Projekteinstellungen</h2>
+                    </div>
+                </div>
+
+                <div className="overflow-y-auto">
+                    <AccordionSection title="Projekt" defaultOpen>
+                        <div className={formGroupClass}>
+                            <label className={labelClass}>
+                                Kunde
+                                <Input
+                                    className={fieldClass}
+                                    value={project.client}
+                                    onChange={(event) => onProjectChange({...project, client: event.target.value})}
+                                />
+                            </label>
+                            <label className={labelClass}>
+                                Basis-URL
+                                <Input
+                                    className={fieldClass}
+                                    value={project.baseUrl}
+                                    onChange={(event) => onProjectChange({...project, baseUrl: event.target.value})}
+                                />
+                            </label>
+                        </div>
+                    </AccordionSection>
+
+                    <AccordionSection title="SEO-Relevanz" defaultOpen>
+                        <div className="flex flex-col gap-2 text-[10px] text-muted-foreground [&>span]:flex [&>span]:items-center [&>span]:gap-2">
+                            <span>
+                                <i className="size-2 rounded-full bg-blue-600 shadow-[0_0_0_3px_rgb(35_104_255_/_0.12)]"/>
+                                Hoch
+                            </span>
+                            <span>
+                                <i className="size-2 rounded-full bg-amber-500 shadow-[0_0_0_3px_rgb(227_155_57_/_0.12)]"/>
+                                Mittel
+                            </span>
+                            <span>
+                                <i className="size-2 rounded-full bg-emerald-600/70 shadow-[0_0_0_3px_rgb(104_167_135_/_0.12)]"/>
+                                Niedrig
+                            </span>
+                        </div>
+                    </AccordionSection>
+                </div>
+
+                <div className="flex gap-2 border-t border-border bg-[hsl(var(--panel))] px-5 py-3 text-muted-foreground">
+                    <CircleHelp className="mt-px shrink-0 text-primary" size={17}/>
+                    <p className="m-0 text-[10px] leading-relaxed">
+                        <strong className="block text-foreground">Drag & Drop</strong>
+                        Karte auf andere Karte ziehen, um Parent-Relation zu ändern.
                     </p>
                 </div>
             </aside>
