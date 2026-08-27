@@ -64,13 +64,15 @@ export function ConfirmDialog({
                             {description}
                         </p>
                     </div>
-                    <button
-                        className="-mr-2 -mt-1 grid size-8 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="-mr-2 -mt-1 size-8 text-muted-foreground"
                         aria-label="Dialog schließen"
                         onClick={onCancel}
                     >
                         <X size={17}/>
-                    </button>
+                    </Button>
                 </header>
 
                 <footer className="flex justify-end gap-2 px-5 py-4">

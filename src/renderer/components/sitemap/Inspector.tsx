@@ -1,6 +1,9 @@
 import {AccordionSection} from '@/components/sitemap/AccordionSection.tsx';
 import {Button} from '@/components/ui/button.tsx';
+import {Checkbox} from '@/components/ui/checkbox.tsx';
 import {Input} from '@/components/ui/input.tsx';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
+import {Textarea} from '@/components/ui/textarea.tsx';
 import {
     PAGE_STATUSES,
     PAGE_TYPES,
@@ -93,7 +96,7 @@ export function Inspector({
                         </label>
                         <label className={labelClass}>
                             Beschreibung
-                            <textarea
+                            <Textarea
                                 className={textareaClass}
                                 value={selectedNode.description}
                                 rows={3}
@@ -105,23 +108,25 @@ export function Inspector({
                     <div className={formGridClass}>
                         <label className={labelClass}>
                             Seitentyp
-                            <select
-                                className={`${fieldClass} w-full`}
-                                value={selectedNode.pageType}
-                                onChange={(event) => onUpdateNode('pageType', event.target.value as PageType)}
-                            >
-                                {PAGE_TYPES.map((item: PageType) => <option key={item}>{item}</option>)}
-                            </select>
+                            <Select value={selectedNode.pageType} onValueChange={(value) => onUpdateNode('pageType', value as PageType)}>
+                                <SelectTrigger className={`${fieldClass} w-full`}>
+                                    <SelectValue/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PAGE_TYPES.map((item: PageType) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </label>
                         <label className={labelClass}>
                             Status
-                            <select
-                                className={`${fieldClass} w-full`}
-                                value={selectedNode.status}
-                                onChange={(event) => onUpdateNode('status', event.target.value as PageStatus)}
-                            >
-                                {PAGE_STATUSES.map((item: PageStatus) => <option key={item}>{item}</option>)}
-                            </select>
+                            <Select value={selectedNode.status} onValueChange={(value) => onUpdateNode('status', value as PageStatus)}>
+                                <SelectTrigger className={`${fieldClass} w-full`}>
+                                    <SelectValue/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PAGE_STATUSES.map((item: PageStatus) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </label>
                         <label className={labelClass}>
                             Verantwortlich
@@ -146,7 +151,7 @@ export function Inspector({
                         </label>
                         <label className={labelClass}>
                             SEO-Beschreibung
-                            <textarea
+                            <Textarea
                                 className={textareaClass}
                                 value={selectedNode.seoDescription ?? ''}
                                 rows={3}
@@ -158,22 +163,22 @@ export function Inspector({
                     <div className={formGridClass}>
                         <label className={labelClass}>
                             SEO-Relevanz
-                            <select
-                                className={`${fieldClass} w-full`}
-                                value={selectedNode.seoImportance}
-                                onChange={(event) => onUpdateNode('seoImportance', event.target.value as SeoImportance)}
-                            >
-                                {SEO_IMPORTANCE_LEVELS.map((item: SeoImportance) => <option key={item}>{item}</option>)}
-                            </select>
+                            <Select value={selectedNode.seoImportance} onValueChange={(value) => onUpdateNode('seoImportance', value as SeoImportance)}>
+                                <SelectTrigger className={`${fieldClass} w-full`}>
+                                    <SelectValue/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {SEO_IMPORTANCE_LEVELS.map((item: SeoImportance) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </label>
                     </div>
 
                     <label className="flex flex-row items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-[10px] font-semibold text-muted-foreground">
-                        <input
-                            className="mt-px size-3.5 accent-primary"
-                            type="checkbox"
+                        <Checkbox
+                            className="mt-px"
                             checked={selectedNode.noIndex}
-                            onChange={(event) => onUpdateNode('noIndex', event.target.checked)}
+                            onCheckedChange={(checked) => onUpdateNode('noIndex', checked === true)}
                         />
                         <span className="block">
                             <strong className="block text-[10px] text-foreground">Von Indexierung ausschließen</strong>
@@ -203,7 +208,7 @@ export function Inspector({
                         </label>
                         <label className={labelClass}>
                             Notizen
-                            <textarea
+                            <Textarea
                                 className={textareaClass}
                                 value={selectedNode.notes}
                                 rows={3}

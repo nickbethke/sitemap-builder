@@ -1,7 +1,7 @@
 {
-  "name": "Sitemap Builder",
+  "name": "sitemap-builder",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "mobrowser dev",
@@ -13,7 +13,11 @@
     "mobrowser": "mobrowser"
   },
   "dependencies": {
+    "@mobrowser/api": "2.14.1",
+    "@mobrowser/cli": "2.14.1",
+    "@radix-ui/react-checkbox": "^1.3.11",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
+    "@radix-ui/react-select": "^2.3.7",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
@@ -23,9 +27,7 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "@mobrowser/api": "2.14.1",
-    "@mobrowser/cli": "2.14.1"
+    "tailwindcss-animate": "^1.0.7"
   },
   "optionalDependencies": {
     "@mobrowser/sdk-darwin-arm64": "2.14.1",
@@ -49,6 +51,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "postcss": "^8.4.33",
+    "shadcn": "^4.19.0",
     "tailwindcss": "^4.1.4",
     "ts-proto": "^2.10.1",
     "typescript": "^5.8.3",

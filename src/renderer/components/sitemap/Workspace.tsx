@@ -1,24 +1,24 @@
-import {CardContextMenu} from '@/components/sitemap/CardContextMenu.tsx';
+import {MiniMap, type MiniMapViewport} from '@/components/sitemap/MiniMap.tsx';
+import {connectionPath, SitemapCard} from '@/components/sitemap/SitemapCard.tsx';
 import {Button} from '@/components/ui/button.tsx';
+import {Checkbox} from '@/components/ui/checkbox.tsx';
+import {Input} from '@/components/ui/input.tsx';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table.tsx';
 import {
-    CARD_HEIGHT,
-    CARD_WIDTH,
     layoutNodes,
     PAGE_STATUSES,
     PAGE_TYPES,
     SEO_IMPORTANCE_LEVELS,
     type LayoutDirection,
     type SitemapDocument,
-    type SitemapLayout,
     type SitemapNode,
     validateDocument,
 } from '@/lib/sitemap.ts';
 import {cn} from '@/lib/utils.ts';
 import {
     AlertTriangle,
-    ChevronDown,
     Columns3,
-    Link2,
     Minus,
     Plus,
     Rows3,
@@ -27,7 +27,15 @@ import {
     Network,
     X,
 } from 'lucide-react';
-import {type DragEvent, useEffect, useMemo, useState, type WheelEvent, type PointerEvent as ReactPointerEvent} from 'react';
+import {
+    type DragEvent,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type WheelEvent,
+    type PointerEvent as ReactPointerEvent,
+} from 'react';
 
 type WorkspaceProps = {
     document: SitemapDocument;
@@ -56,184 +64,12 @@ type WorkspaceProps = {
     onUpdateNodes: <K extends keyof SitemapNode>(nodeIds: string[], key: K, value: SitemapNode[K]) => void;
 };
 
-const badgeClass = 'inline-flex h-5 items-center rounded-full px-2 text-[8px] font-bold uppercase tracking-wide';
-const importanceClasses = {
-    Hoch: 'bg-blue-600/10 text-blue-600 dark:text-cyan-300',
-    Mittel: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-    Niedrig: 'bg-emerald-600/15 text-emerald-700 dark:text-emerald-300',
-} satisfies Record<SitemapNode['seoImportance'], string>;
-const toolbarSelectClass = 'h-8 max-w-24 rounded-md border border-border bg-background px-2 text-[10px] text-foreground outline-none';
+const toolbarSelectClass = 'h-8 w-auto max-w-24 rounded-md border border-border bg-background px-2 text-[10px] text-foreground outline-none';
 const layoutControlsClass = 'flex h-8 overflow-hidden rounded-md border border-border bg-[hsl(var(--panel))]';
 const layoutButtonClass = 'grid h-full w-8 place-items-center rounded-none border-0 text-muted-foreground hover:bg-muted';
 const tableFieldClass = 'h-7 w-full min-w-20 rounded-md border border-transparent bg-transparent px-1.5 text-[10px] text-foreground outline-none hover:border-input hover:bg-background focus:border-input focus:bg-background';
-const tableHeaderClass = 'sticky top-0 min-w-24 cursor-pointer overflow-hidden border-b border-border bg-muted px-3 py-2.5 text-[9px] uppercase tracking-wider text-muted-foreground [resize:horizontal]';
+const tableHeaderClass = 'sticky top-0 min-w-24 cursor-pointer overflow-hidden border-b border-border bg-muted px-3 py-2.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground [resize:horizontal]';
 const tableCellClass = 'border-b border-border px-2 py-1.5 text-muted-foreground';
-
-type SitemapCardProps = {
-    node: SitemapNode;
-    document: SitemapDocument;
-    layout: SitemapLayout;
-    layoutDirection: LayoutDirection;
-    selected: boolean;
-    draggedId: string | null;
-    dropTarget: boolean;
-    dimmed: boolean;
-    onSelect: () => void;
-    onAddChild: () => void;
-    onDuplicate: () => void;
-    onDelete: () => void;
-    onMoveUp: () => void;
-    onMoveDown: () => void;
-    onMoveUpLevel: () => void;
-    onDraggedNodeChange: (id: string | null) => void;
-    onDropTargetChange: (id: string | null) => void;
-    canMoveTo: (nodeId: string, parentId: string) => boolean;
-    onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void;
-};
-
-function connectionPath(
-    node: SitemapNode,
-    layout: SitemapLayout,
-    direction: LayoutDirection,
-) {
-    if (!node.parentId) return null;
-
-    const from = layout.positions[node.parentId];
-    const to = layout.positions[node.id];
-    if (!from || !to) return null;
-
-    if (direction === 'horizontal') {
-        const x1 = from.x + CARD_WIDTH;
-        const y1 = from.y + CARD_HEIGHT / 2;
-        const x2 = to.x;
-        const y2 = to.y + CARD_HEIGHT / 2;
-
-        return `M ${x1} ${y1} C ${x1 + 52} ${y1}, ${x2 - 52} ${y2}, ${x2} ${y2}`;
-    }
-
-    const x1 = from.x + CARD_WIDTH / 2;
-    const y1 = from.y + CARD_HEIGHT;
-    const x2 = to.x + CARD_WIDTH / 2;
-    const y2 = to.y;
-
-    return `M ${x1} ${y1} C ${x1} ${y1 + 64}, ${x2} ${y2 - 64}, ${x2} ${y2}`;
-}
-
-function SitemapCard({
-    node,
-    document,
-    layout,
-    layoutDirection,
-    selected,
-    draggedId,
-    dropTarget,
-    dimmed,
-    onSelect,
-    onAddChild,
-    onDuplicate,
-    onDelete,
-    onMoveUp,
-    onMoveDown,
-    onMoveUpLevel,
-    onDraggedNodeChange,
-    onDropTargetChange,
-    canMoveTo,
-    onDropNode,
-}: SitemapCardProps) {
-    const position = layout.positions[node.id];
-    if (!position) return null;
-
-    const childCount = document.nodes.filter(
-        (candidate) => candidate.parentId === node.id,
-    ).length;
-    const siblings = document.nodes.filter(
-        (candidate) => candidate.parentId === node.parentId,
-    );
-    const siblingIndex = siblings.findIndex(
-        (candidate) => candidate.id === node.id,
-    );
-    const className = cn(
-        'absolute flex h-36.5 w-59 cursor-grab select-none flex-col rounded-xl border border-border bg-card px-3.5 pb-3 pt-3 shadow-sm transition-all hover:border-primary/50 hover:shadow-lg active:cursor-grabbing',
-        selected && 'border-primary ring-2 ring-primary/15 shadow-lg shadow-primary/10',
-        dropTarget && 'scale-[1.035] border-[#16e2be] ring-3 ring-[#16e2be]/15',
-        dimmed && 'opacity-20',
-    );
-
-    return (
-        <article
-            className={className}
-            style={{left: position.x, top: position.y}}
-            draggable={node.parentId !== null}
-            onDragStart={(event) => {
-                onDraggedNodeChange(node.id);
-                event.dataTransfer.effectAllowed = 'move';
-            }}
-            onDragEnd={() => {
-                onDraggedNodeChange(null);
-                onDropTargetChange(null);
-            }}
-            onDragOver={(event) => {
-                if (draggedId && canMoveTo(draggedId, node.id)) {
-                    event.preventDefault();
-                    onDropTargetChange(node.id);
-                }
-            }}
-            onDragLeave={() => onDropTargetChange(null)}
-            onDrop={(event) => onDropNode(event, node.id)}
-            onClick={(event) => {
-                event.stopPropagation();
-                onSelect();
-            }}
-        >
-            <div className="flex h-5 items-start justify-between">
-                <div className="flex min-w-0 items-center gap-1">
-                    <span className={cn(badgeClass, importanceClasses[node.seoImportance])}>
-                        {node.seoImportance}
-                    </span>
-                    {node.noIndex && (
-                        <span className={cn(badgeClass, 'bg-red-500/10 text-red-600')}>Noindex</span>
-                    )}
-                </div>
-                <CardContextMenu
-                    canDelete={node.parentId !== null}
-                    canMoveUp={siblingIndex > 0}
-                    canMoveDown={siblingIndex < siblings.length - 1}
-                    canMoveUpLevel={node.parentId !== null}
-                    onAddChild={onAddChild}
-                    onDuplicate={onDuplicate}
-                    onDelete={onDelete}
-                    onMoveUp={onMoveUp}
-                    onMoveDown={onMoveDown}
-                    onMoveUpLevel={onMoveUpLevel}
-                />
-            </div>
-
-            <h3 className="mb-0.5 mt-1 text-sm leading-tight tracking-tight">{node.title || 'Ohne Titel'}</h3>
-            <div className="flex items-center gap-1 text-[9px] text-primary">
-                <Link2 size={13}/>
-                {node.slug || '/'}
-            </div>
-            {node.description && <p className="mb-1 mt-2 flex-1 overflow-hidden text-[9px] leading-snug text-muted-foreground">{node.description}</p>}
-            <footer className="mt-auto flex items-center justify-between border-t border-border pt-2 text-[8px] text-muted-foreground">
-                <span>{node.pageType}</span>
-                <span className="flex items-center gap-1">
-                    <i className="size-1.5 rounded-full bg-[#16e2be]"/>
-                    {node.status}
-                </span>
-            </footer>
-
-            {childCount > 0 && (
-                <div className={cn(
-                    'absolute -right-3.5 top-1/2 flex h-7 min-w-7 -translate-y-1/2 items-center justify-center gap-0.5 rounded-full border border-primary/30 bg-card px-1 text-[9px] font-semibold text-primary shadow-md shadow-primary/15 [&_svg]:size-3 [&_svg]:shrink-0 [&_svg]:-rotate-90',
-                    layoutDirection === 'vertical' && '-bottom-3.5 left-1/2 right-auto top-auto -translate-x-1/2 translate-y-0 [&_svg]:rotate-0',
-                )}>
-                    <ChevronDown size={13}/>
-                    {childCount}
-                </div>
-            )}
-        </article>
-    );
-}
 
 export function Workspace({
     document,
@@ -269,7 +105,10 @@ export function Workspace({
     const [showIssues, setShowIssues] = useState(false);
     const [issuesHeight, setIssuesHeight] = useState(() => Number(localStorage.getItem('issues-panel-height')) || 220);
     const [selectedRows, setSelectedRows] = useState<string[]>([]);
+    const [bulkActionKey, setBulkActionKey] = useState(0);
     const [sort, setSort] = useState<{key: keyof SitemapNode; direction: 1 | -1}>({key: 'title', direction: 1});
+    const canvasRef = useRef<HTMLDivElement>(null);
+    const [viewport, setViewport] = useState<MiniMapViewport>({scrollLeft: 0, scrollTop: 0, clientWidth: 0, clientHeight: 0});
     const issues = useMemo(() => validateDocument(document), [document]);
     const layout = useMemo(
         () => layoutNodes(document.nodes, layoutDirection),
@@ -297,6 +136,40 @@ export function Workspace({
     useEffect(() => {
         localStorage.setItem('issues-panel-height', String(Math.round(issuesHeight)));
     }, [issuesHeight]);
+
+    const syncViewport = () => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        setViewport({
+            scrollLeft: canvas.scrollLeft,
+            scrollTop: canvas.scrollTop,
+            clientWidth: canvas.clientWidth,
+            clientHeight: canvas.clientHeight,
+        });
+    };
+
+    useEffect(() => {
+        if (view !== 'canvas') return;
+
+        syncViewport();
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const observer = new ResizeObserver(syncViewport);
+        observer.observe(canvas);
+        return () => observer.disconnect();
+    }, [view, showIssues, issuesHeight]);
+
+    const navigateFromMiniMap = (x: number, y: number) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        canvas.scrollTo({
+            left: x * zoom - canvas.clientWidth / 2,
+            top: y * zoom - canvas.clientHeight / 2,
+        });
+    };
 
     const toggleSort = (key: keyof SitemapNode) => setSort((current) => ({
         key,
@@ -343,8 +216,8 @@ export function Workspace({
             <div className="z-4 flex items-center justify-between border-b border-border bg-[hsl(var(--panel)/.82)] px-3.5 backdrop-blur-md">
                 <div className="flex h-8 w-52 items-center gap-2 rounded-md border border-border bg-background px-2 text-muted-foreground">
                     <Search size={15}/>
-                    <input
-                        className="w-full border-0 bg-transparent text-xs text-foreground outline-none"
+                    <Input
+                        className="h-auto w-full border-0 bg-transparent p-0 text-xs text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         value={search}
                         placeholder="Seiten durchsuchen …"
                         onChange={(event) => onSearchChange(event.target.value)}
@@ -355,51 +228,86 @@ export function Workspace({
                     <span className="text-[10px] text-muted-foreground">{document.nodes.length} Seiten</span>
                     {view === 'table' && (
                         <>
-                            <select className={toolbarSelectClass} value={statusFilter} aria-label="Nach Status filtern" onChange={(event) => setStatusFilter(event.target.value)}>
-                                <option value="Alle">Status</option>
-                                {PAGE_STATUSES.map((status) => <option key={status}>{status}</option>)}
-                            </select>
-                            <select className={toolbarSelectClass} value={typeFilter} aria-label="Nach Seitentyp filtern" onChange={(event) => setTypeFilter(event.target.value)}>
-                                <option value="Alle">Typ</option>
-                                {PAGE_TYPES.map((type) => <option key={type}>{type}</option>)}
-                            </select>
-                            <select className={toolbarSelectClass} value={ownerFilter} aria-label="Nach Verantwortlichem filtern" onChange={(event) => setOwnerFilter(event.target.value)}>
-                                <option value="Alle">Owner</option>
-                                {owners.map((owner) => <option key={owner}>{owner}</option>)}
-                            </select>
-                            <select className={toolbarSelectClass} value={importanceFilter} aria-label="Nach SEO-Relevanz filtern" onChange={(event) => setImportanceFilter(event.target.value)}>
-                                <option value="Alle">SEO</option>
-                                {SEO_IMPORTANCE_LEVELS.map((level) => <option key={level}>{level}</option>)}
-                            </select>
-                            {activeFilterCount > 0 && <button className="rounded-md border border-primary/30 bg-accent px-2 text-primary" onClick={clearFilters}>{activeFilterCount} Filter ×</button>}
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach Status filtern">
+                                    <SelectValue/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Alle">Status</SelectItem>
+                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select value={typeFilter} onValueChange={setTypeFilter}>
+                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach Seitentyp filtern">
+                                    <SelectValue/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Alle">Typ</SelectItem>
+                                    {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach Verantwortlichem filtern">
+                                    <SelectValue/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Alle">Owner</SelectItem>
+                                    {owners.map((owner) => <SelectItem key={owner} value={owner}>{owner}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select value={importanceFilter} onValueChange={setImportanceFilter}>
+                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach SEO-Relevanz filtern">
+                                    <SelectValue/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Alle">SEO</SelectItem>
+                                    {SEO_IMPORTANCE_LEVELS.map((level) => <SelectItem key={level} value={level}>{level}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            {activeFilterCount > 0 && (
+                                <Button variant="ghost" className="border border-primary/30 bg-accent px-2 text-primary" onClick={clearFilters}>
+                                    {activeFilterCount} Filter ×
+                                </Button>
+                            )}
                         </>
                     )}
-                    <button className={cn('flex items-center rounded-md border border-border bg-background px-2 text-muted-foreground', issues.length > 0 && 'border-amber-500/40 bg-amber-500/10 text-amber-600')} onClick={() => setShowIssues(!showIssues)} title="Qualitätsprüfung">
+                    <Button
+                        variant="ghost"
+                        className={cn('gap-1 border border-border bg-background px-2 text-muted-foreground', issues.length > 0 && 'border-amber-500/40 bg-amber-500/10 text-amber-600')}
+                        onClick={() => setShowIssues(!showIssues)}
+                        title="Qualitätsprüfung"
+                    >
                         <AlertTriangle size={14}/>{issues.length}
-                    </button>
+                    </Button>
                     <div className={layoutControlsClass} aria-label="Ansicht">
-                        <button className={cn(layoutButtonClass, view === 'canvas' && 'bg-accent text-primary')} aria-label="Canvas" onClick={() => setView('canvas')}><Network size={15}/></button>
-                        <button className={cn(layoutButtonClass, view === 'table' && 'bg-accent text-primary')} aria-label="Tabelle" onClick={() => setView('table')}><Table2 size={15}/></button>
+                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'canvas' && 'bg-accent text-primary')} aria-label="Canvas" onClick={() => setView('canvas')}>
+                            <Network size={15}/>
+                        </Button>
+                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'table' && 'bg-accent text-primary')} aria-label="Tabelle" onClick={() => setView('table')}>
+                            <Table2 size={15}/>
+                        </Button>
                     </div>
                     {view === 'canvas' && (
                         <>
                             <div className={layoutControlsClass} aria-label="Darstellung">
-                                <button
+                                <Button
+                                    variant="ghost"
                                     className={cn(layoutButtonClass, layoutDirection === 'horizontal' && 'bg-accent text-primary')}
                                     aria-label="Horizontal darstellen"
                                     title="Horizontal darstellen"
                                     onClick={() => onLayoutDirectionChange('horizontal')}
                                 >
                                     <Rows3 size={15}/>
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="ghost"
                                     className={cn(layoutButtonClass, layoutDirection === 'vertical' && 'bg-accent text-primary')}
                                     aria-label="Vertikal darstellen"
                                     title="Vertikal darstellen"
                                     onClick={() => onLayoutDirectionChange('vertical')}
                                 >
                                     <Columns3 size={15}/>
-                                </button>
+                                </Button>
                             </div>
                             <Button
                                 variant="outline"
@@ -410,12 +318,13 @@ export function Workspace({
                                 Unterseite
                             </Button>
                             <div className="flex h-8 items-center overflow-hidden rounded-md border border-border bg-[hsl(var(--panel))] [&_button]:grid [&_button]:h-full [&_button]:w-8 [&_button]:place-items-center [&_button]:rounded-none [&_button]:border-0 [&_button:hover]:bg-muted">
-                                <button
+                                <Button
+                                    variant="ghost"
                                     aria-label="Verkleinern"
                                     onClick={() => onZoomChange(Math.max(0.55, zoom - 0.1))}
                                 >
                                     <Minus size={14}/>
-                                </button>
+                                </Button>
                                 <span
                                     className="w-10 select-none text-center text-[9px] text-muted-foreground"
                                     title="Doppelklick: Zoom auf 100 % zurücksetzen"
@@ -423,12 +332,13 @@ export function Workspace({
                                 >
                                     {Math.round(zoom * 100)}%
                                 </span>
-                                <button
+                                <Button
+                                    variant="ghost"
                                     aria-label="Vergrößern"
                                     onClick={() => onZoomChange(Math.min(1.25, zoom + 0.1))}
                                 >
                                     <Plus size={14}/>
-                                </button>
+                                </Button>
                             </div>
                         </>
                     )}
@@ -438,95 +348,180 @@ export function Workspace({
             {view === 'table' ? (
                 <div className="overflow-auto p-4">
                     {selectedRows.length > 0 && (
-                        <div className="sticky left-0 top-0 z-10 mb-2 flex h-10 items-center gap-3 rounded-lg border border-primary/25 bg-accent px-3 text-[10px] [&_button]:h-7 [&_button]:rounded-md [&_button]:border [&_button]:border-border [&_button]:bg-background [&_button]:px-2 [&_button]:text-[9px] [&_select]:h-7 [&_select]:rounded-md [&_select]:border [&_select]:border-border [&_select]:bg-background [&_select]:px-2 [&_select]:text-[9px]">
+                        <div className="sticky left-0 top-0 z-10 mb-2 flex h-10 items-center gap-3 rounded-lg border border-primary/25 bg-accent px-3 text-[10px] [&_button]:h-7 [&_button]:rounded-md [&_button]:border [&_button]:border-border [&_button]:bg-background [&_button]:px-2 [&_button]:text-[9px]">
                             <strong className="text-primary">{selectedRows.length} ausgewählt</strong>
-                            <select defaultValue="" onChange={(event) => {
-                                if (event.target.value) onUpdateNodes(selectedRows, 'status', event.target.value as SitemapNode['status']);
-                                event.target.value = '';
-                            }}>
-                                <option value="">Status setzen …</option>
-                                {PAGE_STATUSES.map((status) => <option key={status}>{status}</option>)}
-                            </select>
-                            <button onClick={() => setSelectedRows([])}>Auswahl aufheben</button>
+                            <Select
+                                key={bulkActionKey}
+                                onValueChange={(value) => {
+                                    onUpdateNodes(selectedRows, 'status', value as SitemapNode['status']);
+                                    setBulkActionKey((current) => current + 1);
+                                }}
+                            >
+                                <SelectTrigger className="w-auto">
+                                    <SelectValue placeholder="Status setzen …"/>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Button variant="ghost" onClick={() => setSelectedRows([])}>Auswahl aufheben</Button>
                         </div>
                     )}
-                    <table className="w-full border-separate border-spacing-0 overflow-hidden rounded-xl border border-border bg-card text-left text-[10px]">
-                        <thead><tr>
-                            <th className={`${tableHeaderClass} w-10 min-w-10 cursor-default [resize:none]`}><input type="checkbox" aria-label="Alle sichtbaren Seiten auswählen" checked={visibleNodes.length > 0 && visibleNodes.every((node) => selectedRows.includes(node.id))} onChange={(event) => setSelectedRows(event.target.checked ? visibleNodes.map((node) => node.id) : [])}/></th>
-                            {([['title', 'Seite'], ['slug', 'URL'], ['pageType', 'Typ'], ['status', 'Status'], ['owner', 'Owner']] as [keyof SitemapNode, string][]).map(([key, label]) => <th className={tableHeaderClass} key={key} onClick={() => toggleSort(key)}>{label}{sort.key === key ? (sort.direction === 1 ? ' ↑' : ' ↓') : ''}</th>)}
-                            <th className={tableHeaderClass}>Prüfung</th>
-                        </tr></thead>
-                        <tbody>{visibleNodes.map((node) => (
-                            <tr key={node.id} className={cn('cursor-pointer hover:bg-accent/60', selectedId === node.id && 'bg-accent/60')} onClick={() => onSelectNode(node.id)}>
-                                <td className={tableCellClass} onClick={(event) => event.stopPropagation()}><input type="checkbox" checked={selectedRows.includes(node.id)} onChange={(event) => setSelectedRows((current) => event.target.checked ? [...current, node.id] : current.filter((id) => id !== node.id))}/></td>
-                                <td className={tableCellClass}><input className={tableFieldClass} value={node.title} aria-label={`Titel von ${node.title}`} onClick={(event) => event.stopPropagation()} onChange={(event) => onUpdateNode(node.id, 'title', event.target.value)}/></td>
-                                <td className={tableCellClass}><input className={tableFieldClass} value={node.slug} aria-label={`URL von ${node.title}`} onClick={(event) => event.stopPropagation()} onChange={(event) => onUpdateNode(node.id, 'slug', event.target.value)}/></td>
-                                <td className={tableCellClass}><select className={tableFieldClass} value={node.pageType} onClick={(event) => event.stopPropagation()} onChange={(event) => onUpdateNode(node.id, 'pageType', event.target.value as SitemapNode['pageType'])}>{PAGE_TYPES.map((type) => <option key={type}>{type}</option>)}</select></td>
-                                <td className={tableCellClass}><select className={tableFieldClass} value={node.status} onClick={(event) => event.stopPropagation()} onChange={(event) => onUpdateNode(node.id, 'status', event.target.value as SitemapNode['status'])}>{PAGE_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></td>
-                                <td className={tableCellClass}><input className={tableFieldClass} value={node.owner} aria-label={`Owner von ${node.title}`} onClick={(event) => event.stopPropagation()} onChange={(event) => onUpdateNode(node.id, 'owner', event.target.value)}/></td>
-                                <td className={tableCellClass}>{issues.filter((issue) => issue.nodeId === node.id).length || '✓'}</td>
-                            </tr>
-                        ))}</tbody>
-                    </table>
+                    <Table className="border-separate border-spacing-0 overflow-hidden rounded-xl border border-border bg-card text-left text-[10px]">
+                        <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                                <TableHead className={`${tableHeaderClass} w-10 min-w-10 cursor-default resize-none`}>
+                                    <Checkbox
+                                        aria-label="Alle sichtbaren Seiten auswählen"
+                                        checked={visibleNodes.length > 0 && visibleNodes.every((node) => selectedRows.includes(node.id))}
+                                        onCheckedChange={(checked) => setSelectedRows(checked === true ? visibleNodes.map((node) => node.id) : [])}
+                                    />
+                                </TableHead>
+                                {([['title', 'Seite'], ['slug', 'URL'], ['pageType', 'Typ'], ['status', 'Status'], ['owner', 'Owner']] as [keyof SitemapNode, string][]).map(([key, label]) => (
+                                    <TableHead className={tableHeaderClass} key={key} onClick={() => toggleSort(key)}>
+                                        {label}{sort.key === key ? (sort.direction === 1 ? ' ↑' : ' ↓') : ''}
+                                    </TableHead>
+                                ))}
+                                <TableHead className={tableHeaderClass}>Prüfung</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>{visibleNodes.map((node) => (
+                            <TableRow
+                                key={node.id}
+                                className={cn('cursor-pointer hover:bg-accent/60', selectedId === node.id && 'bg-accent/60')}
+                                onClick={() => onSelectNode(node.id)}
+                            >
+                                <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
+                                    <Checkbox
+                                        checked={selectedRows.includes(node.id)}
+                                        onCheckedChange={(checked) => setSelectedRows((current) => checked === true ? [...current, node.id] : current.filter((id) => id !== node.id))}
+                                    />
+                                </TableCell>
+                                <TableCell className={tableCellClass}>
+                                    <Input
+                                        className={tableFieldClass}
+                                        value={node.title}
+                                        aria-label={`Titel von ${node.title}`}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={(event) => onUpdateNode(node.id, 'title', event.target.value)}
+                                    />
+                                </TableCell>
+                                <TableCell className={tableCellClass}>
+                                    <Input
+                                        className={tableFieldClass}
+                                        value={node.slug}
+                                        aria-label={`URL von ${node.title}`}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={(event) => onUpdateNode(node.id, 'slug', event.target.value)}
+                                    />
+                                </TableCell>
+                                <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
+                                    <Select value={node.pageType} onValueChange={(value) => onUpdateNode(node.id, 'pageType', value as SitemapNode['pageType'])}>
+                                        <SelectTrigger className={tableFieldClass}>
+                                            <SelectValue/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </TableCell>
+                                <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
+                                    <Select value={node.status} onValueChange={(value) => onUpdateNode(node.id, 'status', value as SitemapNode['status'])}>
+                                        <SelectTrigger className={tableFieldClass}>
+                                            <SelectValue/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </TableCell>
+                                <TableCell className={tableCellClass}>
+                                    <Input
+                                        className={tableFieldClass}
+                                        value={node.owner}
+                                        aria-label={`Owner von ${node.title}`}
+                                        onClick={(event) => event.stopPropagation()}
+                                        onChange={(event) => onUpdateNode(node.id, 'owner', event.target.value)}
+                                    />
+                                </TableCell>
+                                <TableCell className={tableCellClass}>{issues.filter((issue) => issue.nodeId === node.id).length || '✓'}</TableCell>
+                            </TableRow>
+                        ))}</TableBody>
+                    </Table>
                 </div>
-            ) : <div
-                className="relative overflow-auto bg-[hsl(var(--canvas))] [background-image:radial-gradient(hsl(var(--line)/.6)_0.7px,transparent_0.7px)] [background-size:18px_18px]"
-                onWheel={zoomByWheel}
-                onClick={() => onSelectNode('')}
-            >
+            ) : <div className="relative min-h-0">
                 <div
-                    className="relative origin-top-left transition-transform"
-                    style={{
-                        width: layout.width,
-                        height: layout.height,
-                        transform: `scale(${zoom})`,
-                    }}
+                    ref={canvasRef}
+                    className="absolute inset-0 overflow-auto bg-[hsl(var(--canvas))] [background-image:radial-gradient(hsl(var(--line)/.6)_0.7px,transparent_0.7px)] [background-size:18px_18px]"
+                    onWheel={zoomByWheel}
+                    onScroll={syncViewport}
+                    onClick={() => onSelectNode('')}
                 >
-                    <svg
-                        className="pointer-events-none absolute inset-0 overflow-visible [&_path]:fill-none [&_path]:stroke-[hsl(var(--line))] [&_path]:stroke-[1.5]"
-                        width={layout.width}
-                        height={layout.height}
-                        aria-hidden="true"
+                    <div
+                        className="relative origin-top-left transition-transform"
+                        style={{
+                            width: layout.width,
+                            height: layout.height,
+                            transform: `scale(${zoom})`,
+                        }}
                     >
-                        {document.nodes.map((node) => {
-                            const path = connectionPath(
-                                node,
-                                layout,
-                                layoutDirection,
-                            );
-                            return path
-                                ? <path key={node.id} d={path}/>
-                                : null;
-                        })}
-                    </svg>
+                        <svg
+                            className="pointer-events-none absolute inset-0 overflow-visible [&_path]:fill-none [&_path]:stroke-[hsl(var(--line))] [&_path]:stroke-[1.5]"
+                            width={layout.width}
+                            height={layout.height}
+                            aria-hidden="true"
+                        >
+                            {document.nodes.map((node) => {
+                                const path = connectionPath(
+                                    node,
+                                    layout,
+                                    layoutDirection,
+                                );
+                                return path
+                                    ? <path key={node.id} d={path}/>
+                                    : null;
+                            })}
+                        </svg>
 
-                    {document.nodes.map((node) => (
-                        <SitemapCard
-                            key={node.id}
-                            node={node}
-                            document={document}
-                            layout={layout}
-                            layoutDirection={layoutDirection}
-                            selected={selectedId === node.id}
-                            draggedId={draggedId}
-                            dropTarget={dropTargetId === node.id}
-                            dimmed={Boolean(
-                                search && !visibleNodeIds.has(node.id),
-                            )}
-                            onSelect={() => onSelectNode(node.id)}
-                            onAddChild={() => onAddChild(node.id)}
-                            onDuplicate={() => onDuplicateNode(node.id)}
-                            onDelete={() => onDeleteNode(node.id)}
-                            onMoveUp={() => onMoveNodeSibling(node.id, -1)}
-                            onMoveDown={() => onMoveNodeSibling(node.id, 1)}
-                            onMoveUpLevel={() => onMoveNodeUpLevel(node.id)}
-                            onDraggedNodeChange={onDraggedNodeChange}
-                            onDropTargetChange={onDropTargetChange}
-                            canMoveTo={canMoveTo}
-                            onDropNode={onDropNode}
-                        />
-                    ))}
+                        {document.nodes.map((node) => (
+                            <SitemapCard
+                                key={node.id}
+                                node={node}
+                                document={document}
+                                layout={layout}
+                                layoutDirection={layoutDirection}
+                                selected={selectedId === node.id}
+                                draggedId={draggedId}
+                                dropTarget={dropTargetId === node.id}
+                                dimmed={Boolean(
+                                    search && !visibleNodeIds.has(node.id),
+                                )}
+                                onSelect={() => onSelectNode(node.id)}
+                                onAddChild={() => onAddChild(node.id)}
+                                onDuplicate={() => onDuplicateNode(node.id)}
+                                onDelete={() => onDeleteNode(node.id)}
+                                onMoveUp={() => onMoveNodeSibling(node.id, -1)}
+                                onMoveDown={() => onMoveNodeSibling(node.id, 1)}
+                                onMoveUpLevel={() => onMoveNodeUpLevel(node.id)}
+                                onDraggedNodeChange={onDraggedNodeChange}
+                                onDropTargetChange={onDropTargetChange}
+                                canMoveTo={canMoveTo}
+                                onDropNode={onDropNode}
+                            />
+                        ))}
+                    </div>
                 </div>
+
+                {document.nodes.length > 0 && (
+                    <MiniMap
+                        layout={layout}
+                        nodes={document.nodes}
+                        selectedId={selectedId}
+                        zoom={zoom}
+                        viewport={viewport}
+                        onNavigate={navigateFromMiniMap}
+                    />
+                )}
             </div>}
 
             {showIssues && (
@@ -544,14 +539,17 @@ export function Workspace({
                             <strong className="text-[10px] text-foreground">Qualitätsprüfung</strong>
                             <span className="text-[9px] text-muted-foreground">{issues.length} Hinweise</span>
                         </div>
-                        <button className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Qualitätsprüfung schließen" onClick={() => setShowIssues(false)}><X size={14}/></button>
+                        <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" aria-label="Qualitätsprüfung schließen" onClick={() => setShowIssues(false)}>
+                            <X size={14}/>
+                        </Button>
                     </header>
                     <div className="min-h-0 overflow-auto">
                         {issues.length === 0 ? <p className="m-0 px-4 py-5 text-[10px] text-muted-foreground">Keine Probleme gefunden.</p> : issues.map((issue, index) => {
                             const node = document.nodes.find((item) => item.id === issue.nodeId);
                             return (
-                                <button
-                                    className="grid min-h-8 w-full grid-cols-[8px_150px_1fr_60px] items-center gap-2 border-b border-border px-3 text-left text-[9px] text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                                <Button
+                                    variant="ghost"
+                                    className="grid h-auto min-h-8 w-full grid-cols-[8px_150px_1fr_60px] items-center justify-start gap-2 rounded-none border-b border-border px-3 text-left text-[9px] font-normal text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                                     key={`${issue.nodeId}-${index}`}
                                     onClick={() => onSelectNode(issue.nodeId)}
                                 >
@@ -559,7 +557,7 @@ export function Workspace({
                                     <b className="truncate text-foreground">{node?.title}</b>
                                     <span>{issue.message}</span>
                                     <em className="text-right text-[8px] not-italic uppercase tracking-wide">{issue.level === 'error' ? 'Fehler' : 'Warnung'}</em>
-                                </button>
+                                </Button>
                             );
                         })}
                     </div>

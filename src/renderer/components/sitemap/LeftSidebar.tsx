@@ -1,3 +1,4 @@
+import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
 import type {SitemapProject} from '@/lib/sitemap.ts';
 import {CircleHelp, Download, FilePlus2, FolderOpen, Save} from 'lucide-react';
@@ -14,7 +15,7 @@ type LeftSidebarProps = {
 const eyebrowClass = 'block text-[9px] font-bold uppercase tracking-widest text-muted-foreground';
 const labelClass = 'flex flex-col gap-1.5 text-[10px] font-semibold text-muted-foreground';
 const inputClass = 'h-9 px-2 text-xs text-foreground';
-const fileButtonClass = 'flex h-9 items-center gap-2 rounded-md px-2 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground [&_svg]:w-4';
+const fileButtonClass = 'h-9 justify-start gap-2 px-2 text-left text-xs font-normal text-muted-foreground hover:bg-muted hover:text-foreground [&_svg]:w-4';
 
 export function LeftSidebar({
     project,
@@ -54,26 +55,26 @@ export function LeftSidebar({
 
             <div className="flex flex-col gap-1">
                 <span className={`${eyebrowClass} mb-1.5`}>Datei</span>
-                <button className={fileButtonClass} onClick={onNewProject}>
+                <Button variant="ghost" className={fileButtonClass} onClick={onNewProject}>
                     <FilePlus2/>
                     Neue Sitemap
-                </button>
-                <button className={fileButtonClass} onClick={onOpen}>
+                </Button>
+                <Button variant="ghost" className={fileButtonClass} onClick={onOpen}>
                     <FolderOpen/>
                     .smap öffnen
-                </button>
-                <button className={fileButtonClass} onClick={onSaveAs}>
+                </Button>
+                <Button variant="ghost" className={fileButtonClass} onClick={onSaveAs}>
                     <Save/>
                     Speichern unter
-                </button>
-                <button className={fileButtonClass} onClick={() => onExport('xml')}>
+                </Button>
+                <Button variant="ghost" className={fileButtonClass} onClick={() => onExport('xml')}>
                     <Download/>
                     XML exportieren
-                </button>
-                <button className={fileButtonClass} onClick={() => onExport('csv')}>
+                </Button>
+                <Button variant="ghost" className={fileButtonClass} onClick={() => onExport('csv')}>
                     <Download/>
                     CSV exportieren
-                </button>
+                </Button>
             </div>
 
             <div className="flex flex-col gap-2 text-[10px] text-muted-foreground [&>span:not(:first-child)]:flex [&>span:not(:first-child)]:items-center [&>span:not(:first-child)]:gap-2">

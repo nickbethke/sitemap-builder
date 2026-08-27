@@ -1,3 +1,4 @@
+import {Button} from '@/components/ui/button.tsx';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
     ArrowDown,
@@ -39,14 +40,16 @@ export function CardContextMenu({
     return (
         <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
-                <button
-                    className="grid size-6 place-items-center rounded-md border-0 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-primary"
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-primary"
                     aria-label="Kachelaktionen"
                     title="Kachelaktionen"
                     onClick={(event) => event.stopPropagation()}
                 >
                     <MoreHorizontal size={16}/>
-                </button>
+                </Button>
             </DropdownMenu.Trigger>
 
             <DropdownMenu.Portal>

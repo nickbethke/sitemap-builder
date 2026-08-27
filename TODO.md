@@ -102,7 +102,7 @@
 - [ ] Seiten gesammelt bearbeiten oder verschieben
 - [x] Suche um URL, Beschreibung, Owner und Notizen erweitern
 - [ ] Zoom zurücksetzen und „Alles einpassen“-Aktion anbieten
-- [ ] Mini-Map für große Sitemaps
+- [x] Mini-Map für große Sitemaps
 - [ ] Canvas per Maus verschieben
 - [ ] Drag-and-drop für größere Sitemaps verbessern
 - [ ] Seiten und Teilbäume kopieren/einfügen

@@ -54,10 +54,11 @@ export function NewSitemapDialog({onClose, onCreate}: NewSitemapDialogProps) {
                     {PROJECT_TEMPLATES.map((template) => {
                         const selected = template.id === templateId;
                         return (
-                            <button
+                            <Button
                                 key={template.id}
+                                variant="ghost"
                                 className={cn(
-                                    'relative flex min-h-24 cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3 text-left transition-colors hover:border-primary/50 hover:bg-accent/40',
+                                    'relative h-auto min-h-24 items-start justify-start gap-3 whitespace-normal rounded-lg border border-border bg-background p-3 text-left font-normal hover:border-primary/50 hover:bg-accent/40',
                                     selected && 'border-primary bg-accent/50 ring-2 ring-primary/10',
                                 )}
                                 role="radio"
@@ -68,14 +69,14 @@ export function NewSitemapDialog({onClose, onCreate}: NewSitemapDialogProps) {
                                     'grid size-5 shrink-0 place-items-center rounded-full border border-input text-white',
                                     selected && 'border-primary bg-primary',
                                 )}>
-                                    {selected && <Check size={13}/>} 
+                                    {selected && <Check size={13}/>}
                                 </span>
                                 <span>
                                     <strong className="block text-xs text-foreground">{template.title}</strong>
                                     <small className="mt-1 block pr-3 text-[10px] leading-snug text-muted-foreground">{template.description}</small>
                                 </span>
                                 <em className="absolute bottom-3 right-3 text-[9px] not-italic text-muted-foreground">{template.pageCount} Seiten</em>
-                            </button>
+                            </Button>
                         );
                     })}
                 </div>
