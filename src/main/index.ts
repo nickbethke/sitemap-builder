@@ -3,8 +3,11 @@ import {readFile, rename, stat, writeFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import * as process from 'node:process';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {ExportRequest, SaveSitemapRequest, SetThemeRequest} from './gen/app';
+import {CrawlRequest, EnrichImportRequest, ExportRequest, ImportXmlUrlRequest, SaveSitemapRequest, SetThemeRequest} from './gen/app';
 import {AppServiceDescriptor, MenuActionServiceDescriptor, OpenFileServiceDescriptor} from './gen/ipc_service';
+import {crawlWebsite} from './import/crawler';
+import {enrichImportedPage} from './import/page-parser';
+import {parseXmlSitemap, parseXmlSitemapUrl} from './import/xml';
 
 const MAGIC = Buffer.from('SMAP');
 const FORMAT_VERSION = 1;
@@ -112,6 +115,53 @@ ipc.registerService(AppServiceDescriptor, {
         const sitemap = await openSitemapFile(startupSitemapPath);
         return {canceled: false, ...sitemap};
     },
+    async ParseXmlUrl(request: ImportXmlUrlRequest) {
+        return {canceled: false, ...await parseXmlSitemapUrl(request.url)};
+    },
+    async *CrawlWebsite(request: CrawlRequest, context) {
+        yield* crawlWebsite(request, context.signal);
+    },
+    async *EnrichImportedPages(request: EnrichImportRequest, context) {
+        const total = request.pages.length;
+        const concurrency = 6;
+        const pending = new Map<number, Promise<(typeof request.pages)[number]>>();
+        let nextIndex = 0;
+        let completed = 0;
+
+        const fillQueue = () => {
+            while (nextIndex < total && pending.size < concurrency) {
+                const index = nextIndex;
+                nextIndex += 1;
+                pending.set(index, enrichImportedPage(request.pages[index], context.signal));
+            }
+        };
+
+        fillQueue();
+        while (pending.size > 0) {
+            const result = await Promise.race([...pending].map(async ([index, promise]) => ({
+                index,
+                page: await promise,
+            })));
+            pending.delete(result.index);
+            completed += 1;
+            yield {completed, total, page: result.page};
+            fillQueue();
+        }
+    },
+    async SelectAndParseXml() {
+        const result = await app.showOpenDialog({
+            parentWindow: win,
+            title: 'XML-Sitemap importieren',
+            selectionPolicy: 'files',
+            filters: [{name: 'XML-Sitemap', extensions: ['xml', 'gz']}],
+        });
+        if (result.canceled || !result.paths[0]) {
+            return {canceled: true, pages: [], baseUrl: '', projectName: '', warnings: []};
+        }
+
+        const parsed = await parseXmlSitemap(result.paths[0]);
+        return {canceled: false, ...parsed};
+    },
     async ExportFile(request: ExportRequest) {
         const config = EXPORT_FORMATS[request.format] ?? EXPORT_FORMATS.csv;
         const result = await app.showSaveDialog({
@@ -148,6 +198,7 @@ app.setMenu(new Menu({
             items: [
                 new MenuItem({id: 'new', label: 'Neue Sitemap…', shortcut: 'CommandOrControl+N', action: () => emitMenuAction('new')}),
                 new MenuItem({id: 'open', label: 'Öffnen…', shortcut: 'CommandOrControl+O', action: () => emitMenuAction('open')}),
+                new MenuItem({id: 'import-website', label: 'Bestehende Website importieren…', action: () => emitMenuAction('import-website')}),
                 'separator',
                 new MenuItem({id: 'save', label: 'Speichern', action: () => emitMenuAction('save')}),
                 new MenuItem({id: 'save-as', label: 'Speichern unter…', shortcut: 'CommandOrControl+Shift+S', action: () => emitMenuAction('save-as')}),

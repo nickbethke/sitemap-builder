@@ -1,6 +1,6 @@
 import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
-import {FolderOpen, Moon, Redo2, Save, Sun, Undo2} from 'lucide-react';
+import {FolderInput, FolderOpen, Moon, Redo2, Save, Sun, Undo2} from 'lucide-react';
 
 type TopbarProps = {
     projectName: string;
@@ -9,6 +9,7 @@ type TopbarProps = {
     onProjectNameChange: (name: string) => void;
     onThemeToggle: () => void;
     onOpen: () => void;
+    onImport: () => void;
     onSave: () => void;
     onUndo: () => void;
     onRedo: () => void;
@@ -23,6 +24,7 @@ export function Topbar({
     onProjectNameChange,
     onThemeToggle,
     onOpen,
+    onImport,
     onSave,
     onUndo,
     onRedo,
@@ -74,6 +76,9 @@ export function Topbar({
                         ? <Sun size={17}/>
                         : <Moon size={17}/>
                     }
+                </Button>
+                <Button variant="ghost" size="icon" aria-label="Bestehende Website importieren" title="Bestehende Website importieren" onClick={onImport}>
+                    <FolderInput size={17}/>
                 </Button>
                 <Button variant="outline" size="sm" onClick={onOpen}>
                     <FolderOpen size={16}/>

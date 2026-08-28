@@ -31,11 +31,16 @@
 
 ## Priorität mittel
 
-- [ ] **Bestehende Website importieren**
-  - URLs einer Domain crawlen
-  - Bestehende XML-Sitemap importieren
-  - Seiten als erste Sitemap-Struktur anlegen
-  - Import-Ergebnis prüfen und bereinigen lassen
+- [x] **Bestehende Website importieren**
+  - [x] URLs einer Domain crawlen
+  - [x] Bestehende XML-Sitemap importieren
+  - [x] Seiten als erste Sitemap-Struktur anlegen
+  - [x] Import-Ergebnis prüfen und bereinigen lassen
+  - [x] SEO-Metadaten korrekt übernehmen
+    - `<title>` als SEO-Titel speichern
+    - Meta-Description als SEO-Beschreibung speichern
+    - H1 als Seitentitel verwenden, URL-Segment als Fallback
+    - Canonical und Meta-Robots (`noindex`, `nofollow`) auswerten
 
 - [ ] **Ansichten und Organisation**
   - [x] Tabellenansicht aller Seiten

@@ -1,3 +1,4 @@
+import {ImportWebsiteDialog} from '@/components/sitemap/ImportWebsiteDialog.tsx';
 import {Inspector} from '@/components/sitemap/Inspector.tsx';
 import {NewSitemapDialog} from '@/components/sitemap/NewSitemapDialog.tsx';
 import {Topbar} from '@/components/sitemap/Topbar.tsx';
@@ -19,6 +20,7 @@ function App() {
 function SitemapBuilder() {
     const sitemap = useSitemapBuilder();
     const [newSitemapOpen, setNewSitemapOpen] = useState(false);
+    const [importWebsiteOpen, setImportWebsiteOpen] = useState(false);
     const workspaceRef = useRef<WorkspaceHandle>(null);
 
     useEffect(() => {
@@ -27,6 +29,7 @@ function SitemapBuilder() {
                 switch (action) {
                     case 'new': setNewSitemapOpen(true); break;
                     case 'open': void sitemap.open(); break;
+                    case 'import-website': setImportWebsiteOpen(true); break;
                     case 'save': void sitemap.save(false); break;
                     case 'save-as': void sitemap.save(true); break;
                     case 'undo': sitemap.undo(); break;
@@ -54,6 +57,7 @@ function SitemapBuilder() {
                 })}
                 onThemeToggle={() => void sitemap.toggleTheme()}
                 onOpen={() => void sitemap.open()}
+                onImport={() => setImportWebsiteOpen(true)}
                 onSave={() => void sitemap.save(false)}
                 onUndo={sitemap.undo}
                 onRedo={sitemap.redo}
@@ -107,6 +111,13 @@ function SitemapBuilder() {
                 <NewSitemapDialog
                     onClose={() => setNewSitemapOpen(false)}
                     onCreate={sitemap.newProject}
+                />
+            )}
+
+            {importWebsiteOpen && (
+                <ImportWebsiteDialog
+                    onClose={() => setImportWebsiteOpen(false)}
+                    onImport={sitemap.importPages}
                 />
             )}
 

@@ -1,5 +1,6 @@
 import {useTheme} from '@/components/theme-provider.tsx';
 import {ipc} from '@/gen/ipc';
+import {createImportedDocument, type ImportPreviewPage} from '@/lib/import.ts';
 import {
     createNodeId,
     createProjectDocument,
@@ -516,6 +517,30 @@ export function useSitemapBuilder() {
         setMessage(`Neue Sitemap: ${project.name}`);
     };
 
+    const importPages = async (
+        pages: ImportPreviewPage[],
+        projectName: string,
+        baseUrl: string,
+    ): Promise<boolean> => {
+        if (dirty && !await requestConfirmation({
+            title: 'Aktuelles Projekt ersetzen?',
+            description: 'Der Import ersetzt die aktuelle Sitemap. Ungespeicherte Änderungen gehen verloren.',
+            confirmLabel: 'Ersetzen und importieren',
+            destructive: true,
+        })) return false;
+
+        const nextDocument = createImportedDocument(pages, projectName, baseUrl);
+        setDocument(nextDocument);
+        setPast([]);
+        setFuture([]);
+        setSelectedId(nextDocument.nodes[0]?.id ?? '');
+        setCurrentPath('');
+        setDirty(true);
+        localStorage.removeItem('sitemap-builder-autosave');
+        setMessage(`${nextDocument.nodes.length} Seiten aus XML importiert`);
+        return true;
+    };
+
     const suggestedExportName = () => document.project.name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-|-$/g, '') || 'sitemap';
 
     const exportFile = async (format: 'xml' | 'csv' | 'md' | 'html') => {
@@ -580,5 +605,6 @@ export function useSitemapBuilder() {
         canMoveTo,
         dropOn,
         newProject,
+        importPages,
     };
 }

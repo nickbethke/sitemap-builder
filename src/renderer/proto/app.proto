@@ -40,12 +40,65 @@ message ExportResponse {
   string path = 2;
 }
 
+message ImportedPage {
+  string url = 1;
+  string path = 2;
+  string title = 3;
+  repeated string warnings = 4;
+  uint32 http_status = 5;
+  string final_url = 6;
+  string seo_title = 7;
+  string seo_description = 8;
+  string canonical_url = 9;
+  bool no_index = 10;
+  bool no_follow = 11;
+}
+
+message ImportXmlResponse {
+  bool canceled = 1;
+  repeated ImportedPage pages = 2;
+  string base_url = 3;
+  string project_name = 4;
+  repeated string warnings = 5;
+}
+
+message ImportXmlUrlRequest {
+  string url = 1;
+}
+
+message EnrichImportRequest {
+  repeated ImportedPage pages = 1;
+}
+
+message ImportProgress {
+  uint32 completed = 1;
+  uint32 total = 2;
+  ImportedPage page = 3;
+}
+
+message CrawlRequest {
+  string start_url = 1;
+  uint32 max_pages = 2;
+  uint32 max_depth = 3;
+  bool ignore_query_parameters = 4;
+}
+
+message CrawlProgress {
+  uint32 completed = 1;
+  uint32 discovered = 2;
+  ImportedPage page = 3;
+}
+
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SaveSitemap(SaveSitemapRequest) returns (SaveSitemapResponse);
   rpc OpenSitemap(OpenSitemapRequest) returns (OpenSitemapResponse);
   rpc GetStartupSitemap(google.protobuf.Empty) returns (OpenSitemapResponse);
   rpc ExportFile(ExportRequest) returns (ExportResponse);
+  rpc SelectAndParseXml(google.protobuf.Empty) returns (ImportXmlResponse);
+  rpc ParseXmlUrl(ImportXmlUrlRequest) returns (ImportXmlResponse);
+  rpc EnrichImportedPages(EnrichImportRequest) returns (stream ImportProgress);
+  rpc CrawlWebsite(CrawlRequest) returns (stream CrawlProgress);
 }
 
 service OpenFileService {
