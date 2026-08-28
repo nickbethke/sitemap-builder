@@ -26,6 +26,7 @@ import {
     Search,
     Table2,
     Network,
+    Trash2,
     X,
 } from 'lucide-react';
 import {
@@ -56,6 +57,7 @@ type WorkspaceProps = {
     onAddChild: (parentId?: string | null) => void;
     onDuplicateNode: (nodeId: string) => void;
     onDeleteNode: (nodeId: string) => void;
+    onDeleteNodes: (nodeIds: string[]) => Promise<boolean>;
     onMoveNodeSibling: (nodeId: string, direction: -1 | 1) => void;
     onMoveNodeUpLevel: (nodeId: string) => void;
     onSelectNode: (id: string) => void;
@@ -95,6 +97,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     onAddChild,
     onDuplicateNode,
     onDeleteNode,
+    onDeleteNodes,
     onMoveNodeSibling,
     onMoveNodeUpLevel,
     onSelectNode,
@@ -156,6 +159,11 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     useEffect(() => {
         localStorage.setItem('issues-panel-height', String(Math.round(issuesHeight)));
     }, [issuesHeight]);
+
+    useEffect(() => {
+        const nodeIds = new Set(document.nodes.map((node) => node.id));
+        setSelectedRows((current) => current.filter((id) => nodeIds.has(id)));
+    }, [document.nodes]);
 
     const syncViewport = () => {
         const canvas = canvasRef.current;
@@ -384,6 +392,16 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
                                 </SelectContent>
                             </Select>
+                            <Button
+                                variant="ghost"
+                                className="!gap-1.5 !border-destructive/30 !bg-destructive/10 !text-destructive hover:!bg-destructive/20"
+                                onClick={() => void onDeleteNodes(selectedRows).then((deleted) => {
+                                    if (deleted) setSelectedRows([]);
+                                })}
+                            >
+                                <Trash2 size={12}/>
+                                Löschen
+                            </Button>
                             <Button variant="ghost" onClick={() => setSelectedRows([])}>Auswahl aufheben</Button>
                         </div>
                     )}

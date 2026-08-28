@@ -82,6 +82,7 @@ function SitemapBuilder() {
                 onAddChild={sitemap.addChild}
                 onDuplicateNode={sitemap.duplicateNode}
                 onDeleteNode={sitemap.deleteNode}
+                onDeleteNodes={sitemap.deleteNodes}
                 onMoveNodeSibling={sitemap.moveNodeSibling}
                 onMoveNodeUpLevel={sitemap.moveNodeUpLevel}
                 onSelectNode={sitemap.setSelectedId}

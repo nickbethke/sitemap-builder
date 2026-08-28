@@ -465,6 +465,49 @@ export function useSitemapBuilder() {
         );
     };
 
+    const deleteNodes = async (nodeIds: string[]) => {
+        const selectedIds = new Set(nodeIds);
+        const roots = document.nodes.filter((node) => selectedIds.has(node.id) && node.parentId === null);
+        const seedIds = new Set(document.nodes
+            .filter((node) => selectedIds.has(node.id) && node.parentId !== null)
+            .map((node) => node.id));
+        if (seedIds.size === 0) {
+            setMessage(roots.length ? 'Startseite kann nicht gelöscht werden' : 'Keine Seiten ausgewählt');
+            return false;
+        }
+
+        const ids = new Set(seedIds);
+        let changed = true;
+        while (changed) {
+            changed = false;
+            document.nodes.forEach((node) => {
+                if (node.parentId && ids.has(node.parentId) && !ids.has(node.id)) {
+                    ids.add(node.id);
+                    changed = true;
+                }
+            });
+        }
+
+        const selectedCount = seedIds.size;
+        const descendantCount = ids.size - selectedCount;
+        const ignoredRoots = roots.length ? ` ${roots.length === 1 ? 'Die Startseite bleibt erhalten.' : 'Startseiten bleiben erhalten.'}` : '';
+        const confirmed = await requestConfirmation({
+            title: `${ids.size} ${ids.size === 1 ? 'Seite' : 'Seiten'} wirklich löschen?`,
+            description: `${selectedCount} ausgewählt${descendantCount ? `, ${descendantCount} ${descendantCount === 1 ? 'Unterseite wird' : 'Unterseiten werden'} mitgelöscht` : ''}. Du kannst diese Änderung anschließend rückgängig machen.${ignoredRoots}`,
+            confirmLabel: `${ids.size} löschen`,
+            destructive: true,
+        });
+        if (!confirmed) return false;
+
+        mutateDocument((current) => ({
+            ...current,
+            nodes: current.nodes.filter((node) => !ids.has(node.id)),
+        }));
+        if (ids.has(selectedId)) setSelectedId(document.nodes.find((node) => node.parentId === null)?.id ?? '');
+        setMessage(`${ids.size} ${ids.size === 1 ? 'Seite' : 'Seiten'} gelöscht`);
+        return true;
+    };
+
     const canMoveTo = (nodeId: string, parentId: string) => {
         if (nodeId === parentId) return false;
 
@@ -602,6 +645,7 @@ export function useSitemapBuilder() {
         moveNodeSibling,
         moveNodeUpLevel,
         deleteNode,
+        deleteNodes,
         canMoveTo,
         dropOn,
         newProject,

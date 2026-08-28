@@ -103,8 +103,8 @@
 - [ ] Qualitätsprobleme nach Typ und Schwere filtern
 - [ ] Quick-Fixes direkt in der Qualitätsprüfung anbieten
 - [ ] Tastenkürzel dokumentieren und ergänzen
-- [ ] Mehrfachauswahl von Seiten
-- [ ] Seiten gesammelt bearbeiten oder verschieben
+- [x] Mehrfachauswahl von Seiten
+- [x] Seiten gesammelt bearbeiten oder löschen
 - [x] Suche um URL, Beschreibung, Owner und Notizen erweitern
 - [ ] Zoom zurücksetzen und „Alles einpassen“-Aktion anbieten
 - [x] Mini-Map für große Sitemaps
