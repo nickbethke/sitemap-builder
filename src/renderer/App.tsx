@@ -41,18 +41,42 @@ function SitemapBuilder() {
         const subscription = ipc.menuAction.WatchMenuActions({}).subscribe({
             next: ({action}) => {
                 switch (action) {
-                    case 'new': setNewSitemapOpen(true); break;
-                    case 'open': void sitemap.open(); break;
-                    case 'import-website': setImportWebsiteOpen(true); break;
-                    case 'save': void sitemap.save(false); break;
-                    case 'save-as': void sitemap.save(true); break;
-                    case 'undo': sitemap.undo(); break;
-                    case 'redo': sitemap.redo(); break;
-                    case 'export-xml': void sitemap.exportFile('xml'); break;
-                    case 'export-csv': void sitemap.exportFile('csv'); break;
-                    case 'export-md': void sitemap.exportFile('md'); break;
-                    case 'export-html': void sitemap.exportFile('html'); break;
-                    case 'export-pdf': void workspaceRef.current?.exportPdf(); break;
+                    case 'new':
+                        setNewSitemapOpen(true);
+                        break;
+                    case 'open':
+                        void sitemap.open();
+                        break;
+                    case 'import-website':
+                        setImportWebsiteOpen(true);
+                        break;
+                    case 'save':
+                        void sitemap.save(false);
+                        break;
+                    case 'save-as':
+                        void sitemap.save(true);
+                        break;
+                    case 'undo':
+                        sitemap.undo();
+                        break;
+                    case 'redo':
+                        sitemap.redo();
+                        break;
+                    case 'export-xml':
+                        void sitemap.exportFile('xml');
+                        break;
+                    case 'export-csv':
+                        void sitemap.exportFile('csv');
+                        break;
+                    case 'export-md':
+                        void sitemap.exportFile('md');
+                        break;
+                    case 'export-html':
+                        void sitemap.exportFile('html');
+                        break;
+                    case 'export-pdf':
+                        void workspaceRef.current?.exportPdf();
+                        break;
                 }
             },
         });

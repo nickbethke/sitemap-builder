@@ -48,8 +48,8 @@
   - [x] Sortierbare Tabellenspalten
   - [x] Spaltenbreiten per Drag-and-drop ändern
   - [x] Mehrfachauswahl und Bulk-Aktionen
-  - [ ] Baumansicht als Alternative zur Canvas
-  - [ ] Kanban-Ansicht nach Status
+  - [x] Baumansicht als Alternative zur Canvas
+  - [x] Kanban-Ansicht nach Status
   - [x] Präsentationsmodus für Kundentermine
   - [x] Filter nach Status
   - [x] Filter nach Owner, Seitentyp und SEO-Priorität

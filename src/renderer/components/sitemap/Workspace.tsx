@@ -1,15 +1,12 @@
-import {MiniMap, type MiniMapViewport} from '@/components/sitemap/MiniMap.tsx';
-import {connectionPath, SitemapCard} from '@/components/sitemap/SitemapCard.tsx';
+import {CanvasView, type CanvasViewHandle} from '@/components/sitemap/CanvasView.tsx';
+import {TableView} from '@/components/sitemap/TableView.tsx';
+import {KanbanView} from '@/components/sitemap/KanbanView.tsx';
+import {TreeView} from '@/components/sitemap/TreeView.tsx';
 import {Button} from '@/components/ui/button.tsx';
-import {Checkbox} from '@/components/ui/checkbox.tsx';
 import {Input} from '@/components/ui/input.tsx';
 import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table.tsx';
-import {captureCanvasAsPdfBase64} from '@/lib/canvasExport.ts';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {
-    CARD_WIDTH,
-    layoutNodes,
     PAGE_STATUSES,
     PAGE_TYPES,
     SEO_IMPORTANCE_LEVELS,
@@ -21,21 +18,21 @@ import {
 import {cn} from '@/lib/utils.ts';
 import {
     AlertTriangle,
-    Columns3,
+    MoveHorizontal,
+    MoveVertical,
     Minus,
     Plus,
-    Rows3,
     Search,
     Table2,
     Network,
-    Trash2,
     X,
     MonitorPlay,
+    PanelsTopLeft,
+    ListTree,
 } from 'lucide-react';
 import {
     type DragEvent,
     forwardRef,
-    useCallback,
     useEffect,
     useImperativeHandle,
     useMemo,
@@ -82,9 +79,6 @@ export type WorkspaceHandle = {
 const toolbarSelectClass = 'h-8 w-auto max-w-24 rounded-md border border-border bg-background px-2 text-[10px] text-foreground outline-none';
 const layoutControlsClass = 'flex h-8 overflow-hidden rounded-md border border-border bg-[hsl(var(--panel))]';
 const layoutButtonClass = 'grid h-full w-8 place-items-center rounded-none border-0 text-muted-foreground hover:bg-muted';
-const tableFieldClass = 'h-7 w-full min-w-20 rounded-md border border-transparent bg-transparent px-1.5 text-[10px] text-foreground outline-none hover:border-input hover:bg-background focus:border-input focus:bg-background';
-const tableHeaderClass = 'sticky top-0 min-w-24 cursor-pointer overflow-hidden border-b border-border bg-muted px-3 py-2.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground [resize:horizontal]';
-const tableCellClass = 'border-b border-border px-2 py-1.5 text-muted-foreground';
 
 export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Workspace({
                                                                                             document,
@@ -116,55 +110,17 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                                                                             presentationMode,
                                                                                             onPresentationModeChange,
                                                                                         }: WorkspaceProps, ref) {
-    const {locale, t} = useTranslation();
-    const [view, setView] = useState<'canvas' | 'table'>('canvas');
+    const {t} = useTranslation();
+    const [view, setView] = useState<'canvas' | 'table' | 'tree' | 'kanban'>('canvas');
     const [statusFilter, setStatusFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
     const [ownerFilter, setOwnerFilter] = useState('all');
     const [importanceFilter, setImportanceFilter] = useState('all');
     const [showIssues, setShowIssues] = useState(false);
     const [issuesHeight, setIssuesHeight] = useState(() => Number(localStorage.getItem('issues-panel-height')) || 220);
-    const [selectedRows, setSelectedRows] = useState<string[]>([]);
-    const [bulkActionKey, setBulkActionKey] = useState(0);
-    const [sort, setSort] = useState<{ key: keyof SitemapNode; direction: 1 | -1 }>({key: 'title', direction: 1});
-    const canvasRef = useRef<HTMLDivElement>(null);
-    const canvasContentRef = useRef<HTMLDivElement>(null);
-    const [viewport, setViewport] = useState<MiniMapViewport>({
-        scrollLeft: 0,
-        scrollTop: 0,
-        clientWidth: 0,
-        clientHeight: 0
-    });
-    const [cardHeights, setCardHeights] = useState<Record<string, number>>({});
-    useEffect(() => {
-        if (presentationMode) setView('canvas');
-    }, [presentationMode]);
-    const onCardSizeChange = useCallback((nodeId: string, height: number) => {
-        const roundedHeight = Math.ceil(height);
-        setCardHeights((current) => current[nodeId] === roundedHeight ? current : {
-            ...current,
-            [nodeId]: roundedHeight
-        });
-    }, []);
+    const canvasViewRef = useRef<CanvasViewHandle>(null);
     const issues = useMemo(() => validateDocument(document), [document]);
-    const layout = useMemo(
-        () => layoutNodes(
-            document.nodes,
-            layoutDirection,
-            Object.fromEntries(Object.entries(cardHeights).map(([id, height]) => [id, {width: CARD_WIDTH, height}])),
-        ),
-        [cardHeights, document.nodes, layoutDirection],
-    );
-
-    useImperativeHandle(ref, () => ({
-        exportPdf: async () => {
-            const node = canvasContentRef.current;
-            if (!node) return;
-
-            const base64 = await captureCanvasAsPdfBase64(node, layout.width, layout.height);
-            onExportPdf(base64);
-        },
-    }), [layout.height, layout.width, onExportPdf]);
+    useImperativeHandle(ref, () => ({exportPdf: async () => canvasViewRef.current?.exportPdf()}), []);
     const visibleNodeIds = useMemo(() => new Set(
         document.nodes
             .filter((node) => `${node.title} ${node.slug} ${node.description} ${node.owner} ${node.notes}`
@@ -178,59 +134,13 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 )))
             .map((node) => node.id),
     ), [document.nodes, importanceFilter, ownerFilter, search, statusFilter, typeFilter, view]);
-    const visibleNodes = useMemo(() => document.nodes
-            .filter((node) => visibleNodeIds.has(node.id))
-            .sort((a, b) => String(a[sort.key] ?? '').localeCompare(String(b[sort.key] ?? ''), locale) * sort.direction),
-        [document.nodes, locale, sort, visibleNodeIds]);
+    const visibleNodes = useMemo(() => document.nodes.filter((node) => visibleNodeIds.has(node.id)), [document.nodes, visibleNodeIds]);
     const owners = useMemo(() => [...new Set(document.nodes.map((node) => node.owner).filter(Boolean))].sort(), [document.nodes]);
 
     useEffect(() => {
         localStorage.setItem('issues-panel-height', String(Math.round(issuesHeight)));
     }, [issuesHeight]);
 
-    useEffect(() => {
-        const nodeIds = new Set(document.nodes.map((node) => node.id));
-        setSelectedRows((current) => current.filter((id) => nodeIds.has(id)));
-    }, [document.nodes]);
-
-    const syncViewport = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        setViewport({
-            scrollLeft: canvas.scrollLeft,
-            scrollTop: canvas.scrollTop,
-            clientWidth: canvas.clientWidth,
-            clientHeight: canvas.clientHeight,
-        });
-    };
-
-    useEffect(() => {
-        if (view !== 'canvas') return;
-
-        syncViewport();
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const observer = new ResizeObserver(syncViewport);
-        observer.observe(canvas);
-        return () => observer.disconnect();
-    }, [view, showIssues, issuesHeight]);
-
-    const navigateFromMiniMap = (x: number, y: number) => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        canvas.scrollTo({
-            left: x * zoom - canvas.clientWidth / 2,
-            top: y * zoom - canvas.clientHeight / 2,
-        });
-    };
-
-    const toggleSort = (key: keyof SitemapNode) => setSort((current) => ({
-        key,
-        direction: current.key === key ? (current.direction === 1 ? -1 : 1) : 1,
-    }));
     const clearFilters = () => {
         setStatusFilter('all');
         setTypeFilter('all');
@@ -238,22 +148,6 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
         setImportanceFilter('all');
     };
     const activeFilterCount = [statusFilter, typeFilter, ownerFilter, importanceFilter].filter((value) => value !== 'all').length;
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const handleWheel = (event: globalThis.WheelEvent) => {
-            if (!event.metaKey && !event.ctrlKey) return;
-
-            event.preventDefault();
-            const nextZoom = zoom + (event.deltaY < 0 ? 0.1 : -0.1);
-            onZoomChange(Math.max(0.1, Math.min(2, nextZoom)));
-        };
-
-        canvas.addEventListener('wheel', handleWheel, {passive: false});
-        return () => canvas.removeEventListener('wheel', handleWheel);
-    }, [zoom, onZoomChange]);
 
     const startIssuesResize = (event: ReactPointerEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -382,6 +276,12 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 aria-label={t('workspace.tableView')} onClick={() => setView('table')}>
                             <Table2 size={15}/>
                         </Button>
+                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'tree' && 'bg-accent text-primary')} aria-label={t('workspace.treeView')} title={t('workspace.treeView')} onClick={() => setView('tree')}>
+                            <ListTree size={15}/>
+                        </Button>
+                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'kanban' && 'bg-accent text-primary')} aria-label={t('workspace.kanbanView')} title={t('workspace.kanbanView')} onClick={() => setView('kanban')}>
+                            <PanelsTopLeft size={15}/>
+                        </Button>
                     </div>
                     {view === 'canvas' && (
                         <>
@@ -393,7 +293,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     title={t('workspace.layoutHorizontal')}
                                     onClick={() => onLayoutDirectionChange('horizontal')}
                                 >
-                                    <Rows3 size={15}/>
+                                    <MoveHorizontal size={15}/>
                                 </Button>
                                 <Button
                                     variant="ghost"
@@ -402,7 +302,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     title={t('workspace.layoutVertical')}
                                     onClick={() => onLayoutDirectionChange('vertical')}
                                 >
-                                    <Columns3 size={15}/>
+                                    <MoveVertical size={15}/>
                                 </Button>
                             </div>
                             <Button
@@ -442,214 +342,35 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 </div>
             </div>}
 
-            {!presentationMode && view === 'table' ? (
-                <div className="overflow-auto p-4">
-                    {selectedRows.length > 0 && (
-                        <div
-                            className="sticky left-0 top-0 z-10 mb-2 flex h-10 items-center gap-3 rounded-lg border border-primary/25 bg-accent px-3 text-[10px] [&_button]:h-7 [&_button]:rounded-md [&_button]:border [&_button]:border-border [&_button]:bg-background [&_button]:px-2 [&_button]:text-[9px]">
-                            <strong
-                                className="text-primary">{t('workspace.rowsSelected', {count: selectedRows.length})}</strong>
-                            <Select
-                                key={bulkActionKey}
-                                onValueChange={(value) => {
-                                    onUpdateNodes(selectedRows, 'status', value as SitemapNode['status']);
-                                    setBulkActionKey((current) => current + 1);
-                                }}
-                            >
-                                <SelectTrigger className="w-auto">
-                                    <SelectValue placeholder={t('workspace.setStatusPlaceholder')}/>
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectGroup>
-                                        {PAGE_STATUSES.map((status) => <SelectItem key={status}
-                                                                                   value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
-                                    </SelectGroup>
-                                </SelectContent>
-                            </Select>
-                            <Button
-                                variant="ghost"
-                                className="gap-1.5! border-destructive/30! bg-destructive/10! text-destructive! hover:bg-destructive/20!"
-                                onClick={() => void onDeleteNodes(selectedRows).then((deleted) => {
-                                    if (deleted) setSelectedRows([]);
-                                })}
-                            >
-                                <Trash2 size={12}/>
-                                {t('common.delete')}
-                            </Button>
-                            <Button variant="ghost"
-                                    onClick={() => setSelectedRows([])}>{t('workspace.clearSelection')}</Button>
-                        </div>
-                    )}
-                    <Table
-                        className="border-separate border-spacing-0 overflow-hidden rounded-xl border border-border bg-card text-left text-[10px]">
-                        <TableHeader>
-                            <TableRow className="hover:bg-transparent">
-                                <TableHead className={`${tableHeaderClass} w-10 min-w-10 cursor-default resize-none`}>
-                                    <Checkbox
-                                        aria-label={t('workspace.selectAllVisible')}
-                                        checked={visibleNodes.length > 0 && visibleNodes.every((node) => selectedRows.includes(node.id))}
-                                        onCheckedChange={(checked) => setSelectedRows(checked === true ? visibleNodes.map((node) => node.id) : [])}
-                                    />
-                                </TableHead>
-                                {([['title', t('workspace.col.page')], ['slug', t('workspace.col.url')], ['pageType', t('workspace.col.type')], ['status', t('workspace.col.status')], ['owner', t('workspace.col.owner')]] as [keyof SitemapNode, string][]).map(([key, label]) => (
-                                    <TableHead className={tableHeaderClass} key={key} onClick={() => toggleSort(key)}>
-                                        {label}{sort.key === key ? (sort.direction === 1 ? ' ↑' : ' ↓') : ''}
-                                    </TableHead>
-                                ))}
-                                <TableHead className={tableHeaderClass}>{t('workspace.col.check')}</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>{visibleNodes.map((node) => (
-                            <TableRow
-                                key={node.id}
-                                className={cn('cursor-pointer hover:bg-accent/60', selectedId === node.id && 'bg-accent/60')}
-                                onClick={() => onSelectNode(node.id)}
-                            >
-                                <TableCell className={cn(tableCellClass, 'pl-3')}
-                                           onClick={(event) => event.stopPropagation()}>
-                                    <Checkbox
-                                        checked={selectedRows.includes(node.id)}
-                                        onCheckedChange={(checked) => setSelectedRows((current) => checked === true ? [...current, node.id] : current.filter((id) => id !== node.id))}
-                                    />
-                                </TableCell>
-                                <TableCell className={tableCellClass}>
-                                    <Input
-                                        className={tableFieldClass}
-                                        value={node.title}
-                                        aria-label={t('workspace.titleOfAria', {title: node.title})}
-                                        onClick={(event) => event.stopPropagation()}
-                                        onChange={(event) => onUpdateNode(node.id, 'title', event.target.value)}
-                                    />
-                                </TableCell>
-                                <TableCell className={tableCellClass}>
-                                    <Input
-                                        className={tableFieldClass}
-                                        value={node.slug}
-                                        aria-label={t('workspace.urlOfAria', {title: node.title})}
-                                        onClick={(event) => event.stopPropagation()}
-                                        onChange={(event) => onUpdateNode(node.id, 'slug', event.target.value)}
-                                    />
-                                </TableCell>
-                                <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
-                                    <Select value={node.pageType}
-                                            onValueChange={(value) => onUpdateNode(node.id, 'pageType', value as SitemapNode['pageType'])}>
-                                        <SelectTrigger className={tableFieldClass}>
-                                            <SelectValue/>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                {PAGE_TYPES.map((type) => <SelectItem key={type}
-                                                                                      value={type}>{t(`pageType.${type}`)}</SelectItem>)}
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-                                <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
-                                    <Select value={node.status}
-                                            onValueChange={(value) => onUpdateNode(node.id, 'status', value as SitemapNode['status'])}>
-                                        <SelectTrigger className={tableFieldClass}>
-                                            <SelectValue/>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectGroup>
-                                                {PAGE_STATUSES.map((status) => <SelectItem key={status}
-                                                                                           value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
-                                            </SelectGroup>
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-                                <TableCell className={tableCellClass}>
-                                    <Input
-                                        className={tableFieldClass}
-                                        value={node.owner}
-                                        aria-label={t('workspace.ownerOfAria', {title: node.title})}
-                                        onClick={(event) => event.stopPropagation()}
-                                        onChange={(event) => onUpdateNode(node.id, 'owner', event.target.value)}
-                                    />
-                                </TableCell>
-                                <TableCell
-                                    className={tableCellClass}>{issues.filter((issue) => issue.nodeId === node.id).length || '✓'}</TableCell>
-                            </TableRow>
-                        ))}</TableBody>
-                    </Table>
-                </div>
-            ) : <div className="relative min-h-0">
-                <div
-                    ref={canvasRef}
-                    className="blueprint-canvas absolute inset-0 overflow-auto"
-                    onScroll={syncViewport}
-                    onClick={() => onSelectNode('')}
-                >
-                    <div style={{width: layout.width * zoom, height: layout.height * zoom}}>
-                        <div
-                            ref={canvasContentRef}
-                            className="relative origin-top-left transition-transform"
-                            style={{
-                                width: layout.width,
-                                height: layout.height,
-                                transform: `scale(${zoom})`,
-                            }}
-                        >
-                            <svg
-                                className="pointer-events-none absolute inset-0 overflow-visible [&_path]:fill-none [&_path]:stroke-[hsl(var(--line))] [&_path]:stroke-[1.5]"
-                                width={layout.width}
-                                height={layout.height}
-                                aria-hidden="true"
-                            >
-                                {document.nodes.map((node) => {
-                                    const path = connectionPath(
-                                        node,
-                                        layout,
-                                        layoutDirection,
-                                    );
-                                    return path
-                                        ? <path key={node.id} d={path}/>
-                                        : null;
-                                })}
-                            </svg>
-
-                            {document.nodes.map((node) => (
-                                <SitemapCard
-                                    key={node.id}
-                                    node={node}
-                                    document={document}
-                                    layout={layout}
-                                    layoutDirection={layoutDirection}
-                                    selected={selectedId === node.id}
-                                    draggedId={draggedId}
-                                    dropTarget={dropTargetId === node.id}
-                                    dimmed={Boolean(
-                                        search && !visibleNodeIds.has(node.id),
-                                    )}
-                                    onSelect={() => onSelectNode(node.id)}
-                                    onAddChild={() => onAddChild(node.id)}
-                                    onDuplicate={() => onDuplicateNode(node.id)}
-                                    onDelete={() => onDeleteNode(node.id)}
-                                    onMoveUp={() => onMoveNodeSibling(node.id, -1)}
-                                    onMoveDown={() => onMoveNodeSibling(node.id, 1)}
-                                    onMoveUpLevel={() => onMoveNodeUpLevel(node.id)}
-                                    onDraggedNodeChange={onDraggedNodeChange}
-                                    onDropTargetChange={onDropTargetChange}
-                                    canMoveTo={canMoveTo}
-                                    onDropNode={onDropNode}
-                                    onSizeChange={onCardSizeChange}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {!presentationMode && document.nodes.length > 0 && (
-                    <MiniMap
-                        layout={layout}
-                        nodes={document.nodes}
-                        selectedId={selectedId}
-                        zoom={zoom}
-                        viewport={viewport}
-                        onNavigate={navigateFromMiniMap}
-                    />
-                )}
-            </div>}
+            {!presentationMode && view === 'tree' ? (
+                <TreeView document={document} selectedId={selectedId} draggedId={draggedId} dropTargetId={dropTargetId} onSelectNode={onSelectNode} onMoveNode={onDropNode} canMoveTo={canMoveTo} onDraggedNodeChange={onDraggedNodeChange} onDropTargetChange={onDropTargetChange}/>
+            ) : !presentationMode && view === 'kanban' ? (
+                <KanbanView nodes={document.nodes.filter((node) => visibleNodeIds.has(node.id))} selectedId={selectedId} onSelectNode={onSelectNode} onUpdateStatus={(nodeId, status) => onUpdateNode(nodeId, 'status', status)}/>
+            ) : !presentationMode && view === 'table' ? (
+                <TableView nodes={visibleNodes} selectedId={selectedId} issues={issues} onSelectNode={onSelectNode} onUpdateNode={onUpdateNode} onUpdateNodes={onUpdateNodes} onDeleteNodes={onDeleteNodes}/>
+            ) : <CanvasView
+                ref={canvasViewRef}
+                document={document}
+                selectedId={selectedId}
+                draggedId={draggedId}
+                dropTargetId={dropTargetId}
+                search={search}
+                zoom={zoom}
+                layoutDirection={layoutDirection}
+                presentationMode={presentationMode}
+                onZoomChange={onZoomChange}
+                onSelectNode={onSelectNode}
+                onAddChild={onAddChild}
+                onDuplicateNode={onDuplicateNode}
+                onDeleteNode={onDeleteNode}
+                onMoveNodeSibling={onMoveNodeSibling}
+                onMoveNodeUpLevel={onMoveNodeUpLevel}
+                onDraggedNodeChange={onDraggedNodeChange}
+                onDropTargetChange={onDropTargetChange}
+                canMoveTo={canMoveTo}
+                onDropNode={onDropNode}
+                onExportPdf={onExportPdf}
+            />}
 
             {!presentationMode && showIssues && (
                 <section
@@ -698,14 +419,17 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
             )}
 
             {presentationMode ? (
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    className="absolute right-5 top-5 z-10 border border-border bg-[hsl(var(--panel)/.88)] shadow-md backdrop-blur"
-                    onClick={() => onPresentationModeChange(false)}
-                >
-                    <X size={15}/>{t('workspace.exitPresentationMode')}
-                </Button>
+                <div className="absolute right-5 top-5 z-10 flex overflow-hidden rounded-md border border-border bg-[hsl(var(--panel)/.88)] shadow-md backdrop-blur [&>button]:rounded-none">
+                    <Button variant="secondary" size="icon" className={cn(layoutDirection === 'horizontal' && '!bg-primary !text-primary-foreground')} aria-label={t('workspace.layoutHorizontal')} title={t('workspace.layoutHorizontal')} onClick={() => onLayoutDirectionChange('horizontal')}>
+                        <MoveHorizontal size={15}/>
+                    </Button>
+                    <Button variant="secondary" size="icon" className={cn(layoutDirection === 'vertical' && '!bg-primary !text-primary-foreground')} aria-label={t('workspace.layoutVertical')} title={t('workspace.layoutVertical')} onClick={() => onLayoutDirectionChange('vertical')}>
+                        <MoveVertical size={15}/>
+                    </Button>
+                    <Button variant="secondary" size="sm" className="border-l border-border" onClick={() => onPresentationModeChange(false)}>
+                        <X size={15}/>{t('workspace.exitPresentationMode')}
+                    </Button>
+                </div>
             ) : (
                 <div
                     className="flex items-center gap-2 border-t border-border bg-[hsl(var(--panel))] px-3 text-[9px] text-muted-foreground">

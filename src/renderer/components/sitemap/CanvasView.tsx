@@ -1,0 +1,28 @@
+import {MiniMap, type MiniMapViewport} from '@/components/sitemap/MiniMap.tsx';
+import {connectionPath, SitemapCard} from '@/components/sitemap/SitemapCard.tsx';
+import {captureCanvasAsPdfBase64} from '@/lib/canvasExport.ts';
+import {CARD_WIDTH, layoutNodes, type LayoutDirection, type SitemapDocument} from '@/lib/sitemap.ts';
+import {type DragEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState} from 'react';
+
+export type CanvasViewHandle = {exportPdf: () => Promise<void>};
+
+type CanvasViewProps = {
+    document: SitemapDocument; selectedId: string; draggedId: string | null; dropTargetId: string | null; search: string; zoom: number; layoutDirection: LayoutDirection; presentationMode: boolean;
+    onZoomChange: (zoom: number) => void; onSelectNode: (id: string) => void; onAddChild: (parentId?: string | null) => void; onDuplicateNode: (id: string) => void; onDeleteNode: (id: string) => void; onMoveNodeSibling: (id: string, direction: -1 | 1) => void; onMoveNodeUpLevel: (id: string) => void; onDraggedNodeChange: (id: string | null) => void; onDropTargetChange: (id: string | null) => void; canMoveTo: (nodeId: string, parentId: string) => boolean; onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void; onExportPdf: (base64: string) => void;
+};
+
+export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function CanvasView(props, ref) {
+    const {document, selectedId, draggedId, dropTargetId, search, zoom, layoutDirection, presentationMode, onZoomChange, onSelectNode, onAddChild, onDuplicateNode, onDeleteNode, onMoveNodeSibling, onMoveNodeUpLevel, onDraggedNodeChange, onDropTargetChange, canMoveTo, onDropNode, onExportPdf} = props;
+    const canvasRef = useRef<HTMLDivElement>(null); const contentRef = useRef<HTMLDivElement>(null);
+    const [viewport, setViewport] = useState<MiniMapViewport>({scrollLeft: 0, scrollTop: 0, clientWidth: 0, clientHeight: 0});
+    const [cardHeights, setCardHeights] = useState<Record<string, number>>({});
+    const onSizeChange = useCallback((id: string, height: number) => setCardHeights((current) => current[id] === Math.ceil(height) ? current : {...current, [id]: Math.ceil(height)}), []);
+    const layout = useMemo(() => layoutNodes(document.nodes, layoutDirection, Object.fromEntries(Object.entries(cardHeights).map(([id, height]) => [id, {width: CARD_WIDTH, height}]))), [cardHeights, document.nodes, layoutDirection]);
+    const visibleNodeIds = useMemo(() => new Set(document.nodes.filter((node) => `${node.title} ${node.slug} ${node.description} ${node.owner} ${node.notes}`.toLowerCase().includes(search.toLowerCase())).map((node) => node.id)), [document.nodes, search]);
+    const syncViewport = useCallback(() => { const canvas = canvasRef.current; if (canvas) setViewport({scrollLeft: canvas.scrollLeft, scrollTop: canvas.scrollTop, clientWidth: canvas.clientWidth, clientHeight: canvas.clientHeight}); }, []);
+    useEffect(() => { syncViewport(); const canvas = canvasRef.current; if (!canvas) return; const observer = new ResizeObserver(syncViewport); observer.observe(canvas); return () => observer.disconnect(); }, [syncViewport]);
+    useEffect(() => { const canvas = canvasRef.current; if (!canvas) return; const wheel = (event: WheelEvent) => { if (!event.metaKey && !event.ctrlKey) return; event.preventDefault(); onZoomChange(Math.max(.1, Math.min(2, zoom + (event.deltaY < 0 ? .1 : -.1)))); }; canvas.addEventListener('wheel', wheel, {passive: false}); return () => canvas.removeEventListener('wheel', wheel); }, [onZoomChange, zoom]);
+    useImperativeHandle(ref, () => ({exportPdf: async () => { if (contentRef.current) onExportPdf(await captureCanvasAsPdfBase64(contentRef.current, layout.width, layout.height)); }}), [layout.height, layout.width, onExportPdf]);
+    const navigate = (x: number, y: number) => canvasRef.current?.scrollTo({left: x * zoom - canvasRef.current.clientWidth / 2, top: y * zoom - canvasRef.current.clientHeight / 2});
+    return <div className="relative min-h-0"><div ref={canvasRef} className="blueprint-canvas absolute inset-0 overflow-auto" onScroll={syncViewport} onClick={() => onSelectNode('')}><div style={{width: layout.width * zoom, height: layout.height * zoom}}><div ref={contentRef} className="relative origin-top-left transition-transform" style={{width: layout.width, height: layout.height, transform: `scale(${zoom})`}}><svg className="pointer-events-none absolute inset-0 overflow-visible [&_path]:fill-none [&_path]:stroke-[hsl(var(--line))] [&_path]:stroke-[1.5]" width={layout.width} height={layout.height}>{document.nodes.map((node) => { const path = connectionPath(node, layout, layoutDirection); return path && <path key={node.id} d={path}/>; })}</svg>{document.nodes.map((node) => <SitemapCard key={node.id} node={node} document={document} layout={layout} layoutDirection={layoutDirection} selected={selectedId === node.id} draggedId={draggedId} dropTarget={dropTargetId === node.id} dimmed={Boolean(search && !visibleNodeIds.has(node.id))} onSelect={() => onSelectNode(node.id)} onAddChild={() => onAddChild(node.id)} onDuplicate={() => onDuplicateNode(node.id)} onDelete={() => onDeleteNode(node.id)} onMoveUp={() => onMoveNodeSibling(node.id, -1)} onMoveDown={() => onMoveNodeSibling(node.id, 1)} onMoveUpLevel={() => onMoveNodeUpLevel(node.id)} onDraggedNodeChange={onDraggedNodeChange} onDropTargetChange={onDropTargetChange} canMoveTo={canMoveTo} onDropNode={onDropNode} onSizeChange={onSizeChange}/>)}</div></div></div>{!presentationMode && document.nodes.length > 0 && <MiniMap layout={layout} nodes={document.nodes} selectedId={selectedId} zoom={zoom} viewport={viewport} onNavigate={navigate}/>}</div>;
+});
