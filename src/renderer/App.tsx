@@ -7,13 +7,16 @@ import {ThemeProvider} from '@/components/theme-provider.tsx';
 import {ConfirmDialog} from '@/components/ui/confirm-dialog.tsx';
 import {ipc} from '@/gen/ipc';
 import {useSitemapBuilder} from '@/hooks/useSitemapBuilder.ts';
+import {LanguageProvider} from '@/lib/i18n/context.tsx';
 import {useEffect, useRef, useState} from 'react';
 
 function App() {
     return (
-        <ThemeProvider>
-            <SitemapBuilder/>
-        </ThemeProvider>
+        <LanguageProvider>
+            <ThemeProvider>
+                <SitemapBuilder/>
+            </ThemeProvider>
+        </LanguageProvider>
     );
 }
 

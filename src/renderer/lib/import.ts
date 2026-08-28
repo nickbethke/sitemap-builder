@@ -1,4 +1,5 @@
 import type {ImportedPage} from '@/gen/app.ts';
+import {DEFAULT_LOCALE, type Locale, translations} from '@/lib/i18n/translations.ts';
 import {
     normalizeDocument,
     type PageType,
@@ -24,11 +25,11 @@ function pathnameOf(path: string): string {
 
 function inferPageType(path: string): PageType {
     const normalized = pathnameOf(path).toLowerCase();
-    if (normalized === '/') return 'Startseite';
-    if (/(^|\/)(kontakt|contact)\/?$/.test(normalized)) return 'Kontakt';
-    if (/(^|\/)(impressum|datenschutz|privacy|agb|widerruf)\/?$/.test(normalized)) return 'Rechtliches';
-    if (/(^|\/)(blog|magazin|news|category|kategorie|shop)\/?$/.test(normalized)) return 'Archiv';
-    return 'Inhaltsseite';
+    if (normalized === '/') return 'home';
+    if (/(^|\/)(kontakt|contact)\/?$/.test(normalized)) return 'contact';
+    if (/(^|\/)(impressum|datenschutz|privacy|agb|widerruf)\/?$/.test(normalized)) return 'legal';
+    if (/(^|\/)(blog|magazin|news|category|kategorie|shop)\/?$/.test(normalized)) return 'archive';
+    return 'content';
 }
 
 function inferParentPath(path: string, availablePaths: Set<string>): string | null {
@@ -75,7 +76,9 @@ export function createImportedDocument(
     pages: ImportPreviewPage[],
     projectName: string,
     baseUrl: string,
+    locale: Locale = DEFAULT_LOCALE,
 ): SitemapDocument {
+    const t = (key: string) => translations[locale][key] ?? key;
     const selected = pages.filter(({selected}) => selected);
     const usedIds = new Set<string>();
     const idByPath = new Map<string, string>();
@@ -88,18 +91,18 @@ export function createImportedDocument(
         nodes.push({
             id: 'home',
             parentId: null,
-            title: 'Startseite',
+            title: t('import.autoHomeTitle'),
             description: '',
             slug: '/',
-            pageType: 'Startseite',
-            seoImportance: 'Hoch',
-            status: 'Fertig',
+            pageType: 'home',
+            seoImportance: 'high',
+            status: 'done',
             owner: '',
             template: 'Homepage',
             noIndex: false,
             seoTitle: '',
             seoDescription: '',
-            notes: 'Beim XML-Import ergänzt, weil keine Startseiten-URL enthalten war.',
+            notes: t('import.autoHomeNote'),
             redirectFrom: '',
         });
     }
@@ -111,12 +114,12 @@ export function createImportedDocument(
         nodes.push({
             id,
             parentId: null,
-            title: page.title.trim() || 'Ohne Titel',
+            title: page.title.trim() || t('export.untitled'),
             description: '',
             slug: page.path || '/',
-            pageType: pathname === '/' ? 'Startseite' : page.pageType,
-            seoImportance: pathname === '/' ? 'Hoch' : 'Mittel',
-            status: 'Fertig',
+            pageType: pathname === '/' ? 'home' : page.pageType,
+            seoImportance: pathname === '/' ? 'high' : 'medium',
+            status: 'done',
             owner: '',
             template: pathname === '/' ? 'Homepage' : 'Standard',
             noIndex: page.noIndex,
@@ -140,7 +143,7 @@ export function createImportedDocument(
 
     return normalizeDocument({
         formatVersion: 1,
-        project: {name: projectName.trim() || 'Website-Import', baseUrl, client: ''},
+        project: {name: projectName.trim() || t('import.defaultProjectName'), baseUrl, client: ''},
         nodes,
         updatedAt: new Date().toISOString(),
     });

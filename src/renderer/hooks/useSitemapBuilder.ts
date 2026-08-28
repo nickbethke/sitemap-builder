@@ -1,5 +1,6 @@
 import {useTheme} from '@/components/theme-provider.tsx';
 import {ipc} from '@/gen/ipc';
+import {useTranslation} from '@/lib/i18n/context.tsx';
 import {createImportedDocument, type ImportPreviewPage} from '@/lib/import.ts';
 import {
     createNodeId,
@@ -37,6 +38,7 @@ type ConfirmationRequest = ConfirmationOptions & {
 
 export function useSitemapBuilder() {
     const {theme, setTheme} = useTheme();
+    const {locale, t} = useTranslation();
     const [document, setDocument] = useState<SitemapDocument>(
         () => normalizeDocument(starterDocument),
     );
@@ -49,7 +51,15 @@ export function useSitemapBuilder() {
     );
     const [currentPath, setCurrentPath] = useState('');
     const [dirty, setDirty] = useState(false);
-    const [message, setMessage] = useState('Bereit');
+    const [message, setMessageRaw] = useState(() => t('status.ready'));
+    const [messageIsDefault, setMessageIsDefault] = useState(true);
+    const setMessage = useCallback((text: string) => {
+        setMessageRaw(text);
+        setMessageIsDefault(false);
+    }, []);
+    useEffect(() => {
+        if (messageIsDefault) setMessageRaw(t('status.ready'));
+    }, [locale, messageIsDefault, t]);
     const [search, setSearch] = useState('');
     const [past, setPast] = useState<SitemapDocument[]>([]);
     const [future, setFuture] = useState<SitemapDocument[]>([]);
@@ -97,34 +107,30 @@ export function useSitemapBuilder() {
 
     const save = useCallback(async (saveAs = false) => {
         try {
-            setMessage('Speichere …');
+            setMessage(t('status.saving'));
             const result = await ipc.app.SaveSitemap({
                 payload: JSON.stringify(document),
                 currentPath: saveAs ? '' : currentPath,
             });
 
             if (result.canceled) {
-                setMessage('Speichern abgebrochen');
+                setMessage(t('status.saveCancelled'));
                 return;
             }
 
             setCurrentPath(result.path);
             localStorage.removeItem('sitemap-builder-autosave');
             setDirty(false);
-            setMessage(`Gespeichert: ${result.path.split('/').pop()}`);
-        } catch (error) {
-            setMessage(
-                error instanceof Error
-                    ? error.message
-                    : 'Speichern fehlgeschlagen',
-            );
+            setMessage(t('status.saved', {name: result.path.split('/').pop() ?? ''}));
+        } catch {
+            setMessage(t('status.saveFailed'));
         }
-    }, [currentPath, document]);
+    }, [currentPath, document, t]);
 
     const loadSitemap = useCallback((path: string, payload: string) => {
         const next = JSON.parse(payload) as SitemapDocument;
         if (next.formatVersion !== 1 || !Array.isArray(next.nodes)) {
-            throw new Error('Ungültige Sitemap-Struktur.');
+            throw new Error('Invalid sitemap structure');
         }
 
         setDocument(normalizeDocument(next));
@@ -134,25 +140,21 @@ export function useSitemapBuilder() {
         setCurrentPath(path);
         localStorage.removeItem('sitemap-builder-autosave');
         setDirty(false);
-        setMessage(`Geöffnet: ${path.split('/').pop()}`);
-    }, []);
+        setMessage(t('status.opened', {name: path.split('/').pop() ?? ''}));
+    }, [t]);
 
     const open = async () => {
         try {
-            setMessage('Öffne …');
+            setMessage(t('status.opening'));
             const result = await ipc.app.OpenSitemap({});
             if (result.canceled) {
-                setMessage('Öffnen abgebrochen');
+                setMessage(t('status.openCancelled'));
                 return;
             }
 
             loadSitemap(result.path, result.payload);
-        } catch (error) {
-            setMessage(
-                error instanceof Error
-                    ? error.message
-                    : 'Öffnen fehlgeschlagen',
-            );
+        } catch {
+            setMessage(t('status.openFailed'));
         }
     };
 
@@ -161,15 +163,11 @@ export function useSitemapBuilder() {
             next: ({path, payload}) => {
                 try {
                     loadSitemap(path, payload);
-                } catch (error) {
-                    setMessage(
-                        error instanceof Error
-                            ? error.message
-                            : 'Öffnen fehlgeschlagen',
-                    );
+                } catch {
+                    setMessage(t('status.openFailed'));
                 }
             },
-            error: () => setMessage('Datei-Öffnung fehlgeschlagen'),
+            error: () => setMessage(t('status.fileOpenFailed')),
         });
 
         void ipc.app.GetStartupSitemap({})
@@ -180,28 +178,24 @@ export function useSitemapBuilder() {
                 }
                 const autosave = localStorage.getItem('sitemap-builder-autosave');
                 if (autosave && await requestConfirmation({
-                    title: 'Sicherung wiederherstellen?',
-                    description: 'Eine automatisch gespeicherte Sitemap wurde gefunden. Möchtest du mit diesem Stand weiterarbeiten?',
-                    confirmLabel: 'Wiederherstellen',
+                    title: t('confirm.restoreBackup.title'),
+                    description: t('confirm.restoreBackup.description'),
+                    confirmLabel: t('confirm.restoreBackup.confirm'),
                 })) {
                     const recovered = JSON.parse(autosave) as {document: SitemapDocument; currentPath: string};
                     setDocument(normalizeDocument(recovered.document));
                     setSelectedId(recovered.document.nodes[0]?.id ?? '');
                     setCurrentPath(recovered.currentPath ?? '');
                     setDirty(true);
-                    setMessage('Automatische Sicherung wiederhergestellt');
+                    setMessage(t('status.backupRestored'));
                 }
             })
-            .catch((error: unknown) => {
-                setMessage(
-                    error instanceof Error
-                        ? error.message
-                        : 'Öffnen fehlgeschlagen',
-                );
+            .catch(() => {
+                setMessage(t('status.openFailed'));
             });
 
         return () => subscription.unsubscribe();
-    }, [loadSitemap, requestConfirmation]);
+    }, [loadSitemap, requestConfirmation, t]);
 
     const undo = useCallback(() => {
         setPast((items) => {
@@ -212,10 +206,10 @@ export function useSitemapBuilder() {
                 return previous;
             });
             setDirty(true);
-            setMessage('Änderung rückgängig gemacht');
+            setMessage(t('status.undone'));
             return items.slice(0, -1);
         });
-    }, []);
+    }, [t]);
 
     const redo = useCallback(() => {
         setFuture((items) => {
@@ -226,10 +220,10 @@ export function useSitemapBuilder() {
                 return next;
             });
             setDirty(true);
-            setMessage('Änderung wiederholt');
+            setMessage(t('status.redone'));
             return items.slice(1);
         });
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -252,10 +246,10 @@ export function useSitemapBuilder() {
         if (!dirty) return;
         const timeout = window.setTimeout(() => {
             localStorage.setItem('sitemap-builder-autosave', JSON.stringify({document, currentPath}));
-            setMessage('Automatisch gesichert');
+            setMessage(t('status.autosaved'));
         }, 800);
         return () => window.clearTimeout(timeout);
-    }, [currentPath, dirty, document]);
+    }, [currentPath, dirty, document, t]);
 
     useEffect(() => {
         const warnBeforeClose = (event: BeforeUnloadEvent) => {
@@ -312,12 +306,12 @@ export function useSitemapBuilder() {
         const node: SitemapNode = {
             id,
             parentId,
-            title: 'Neue Seite',
+            title: t('node.defaultTitle'),
             description: '',
-            slug: `${slugBase}/neue-seite`,
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Mittel',
-            status: 'Geplant',
+            slug: `${slugBase}/${t('node.defaultSlug')}`,
+            pageType: 'content',
+            seoImportance: 'medium',
+            status: 'planned',
             owner: '',
             template: 'Standard',
             noIndex: false,
@@ -341,8 +335,8 @@ export function useSitemapBuilder() {
         const duplicate: SitemapNode = {
             ...source,
             id,
-            title: `${source.title} Kopie`,
-            slug: `${source.slug}-kopie`,
+            title: `${source.title}${t('node.copyTitleSuffix')}`,
+            slug: `${source.slug}${t('node.copySlugSuffix')}`,
         };
         const sourceIndex = document.nodes.findIndex(
             (node) => node.id === source.id,
@@ -390,8 +384,8 @@ export function useSitemapBuilder() {
         setSelectedId(source.id);
         setMessage(
             direction === -1
-                ? 'Seite nach oben sortiert'
-                : 'Seite nach unten sortiert',
+                ? t('status.movedUp')
+                : t('status.movedDown'),
         );
     };
 
@@ -415,7 +409,7 @@ export function useSitemapBuilder() {
             )),
         }));
         setSelectedId(source.id);
-        setMessage('Seite eine Ebene hoch verschoben');
+        setMessage(t('status.movedUpLevel'));
     };
 
     const deleteNode = async (nodeId = selectedId) => {
@@ -431,11 +425,16 @@ export function useSitemapBuilder() {
             return false;
         }).length;
         const confirmed = await requestConfirmation({
-            title: `„${source.title}“ wirklich löschen?`,
+            title: t('confirm.deleteNode.title', {title: source.title}),
             description: descendantCount
-                ? `Dabei ${descendantCount === 1 ? 'wird auch eine Unterseite' : `werden auch ${descendantCount} Unterseiten`} gelöscht. Du kannst diese Änderung anschließend rückgängig machen.`
-                : 'Die Seite wird aus der Sitemap entfernt. Du kannst diese Änderung anschließend rückgängig machen.',
-            confirmLabel: 'Löschen',
+                ? t(
+                    descendantCount === 1
+                        ? 'confirm.deleteNode.descriptionWithChildOne'
+                        : 'confirm.deleteNode.descriptionWithChildMany',
+                    {count: descendantCount},
+                )
+                : t('confirm.deleteNode.descriptionSimple'),
+            confirmLabel: t('common.delete'),
             destructive: true,
         });
         if (!confirmed) return;
@@ -472,7 +471,7 @@ export function useSitemapBuilder() {
             .filter((node) => selectedIds.has(node.id) && node.parentId !== null)
             .map((node) => node.id));
         if (seedIds.size === 0) {
-            setMessage(roots.length ? 'Startseite kann nicht gelöscht werden' : 'Keine Seiten ausgewählt');
+            setMessage(roots.length ? t('status.homeCannotBeDeleted') : t('status.noPagesSelected'));
             return false;
         }
 
@@ -490,11 +489,23 @@ export function useSitemapBuilder() {
 
         const selectedCount = seedIds.size;
         const descendantCount = ids.size - selectedCount;
-        const ignoredRoots = roots.length ? ` ${roots.length === 1 ? 'Die Startseite bleibt erhalten.' : 'Startseiten bleiben erhalten.'}` : '';
+        const ignoredRoots = roots.length
+            ? t(roots.length === 1 ? 'confirm.deleteNodes.homeKeptOne' : 'confirm.deleteNodes.homeKeptMany')
+            : '';
+        const selectedPart = t(
+            selectedCount === 1 ? 'confirm.deleteNodes.selectedOne' : 'confirm.deleteNodes.selectedMany',
+            {count: selectedCount},
+        );
+        const childrenPart = descendantCount
+            ? t(
+                descendantCount === 1 ? 'confirm.deleteNodes.childrenOne' : 'confirm.deleteNodes.childrenMany',
+                {count: descendantCount},
+            )
+            : '';
         const confirmed = await requestConfirmation({
-            title: `${ids.size} ${ids.size === 1 ? 'Seite' : 'Seiten'} wirklich löschen?`,
-            description: `${selectedCount} ausgewählt${descendantCount ? `, ${descendantCount} ${descendantCount === 1 ? 'Unterseite wird' : 'Unterseiten werden'} mitgelöscht` : ''}. Du kannst diese Änderung anschließend rückgängig machen.${ignoredRoots}`,
-            confirmLabel: `${ids.size} löschen`,
+            title: t(ids.size === 1 ? 'confirm.deleteNodes.titleOne' : 'confirm.deleteNodes.titleMany', {count: ids.size}),
+            description: `${selectedPart}${childrenPart}${t('confirm.deleteNodes.footer')}${ignoredRoots}`,
+            confirmLabel: t(ids.size === 1 ? 'confirm.deleteNodes.confirmOne' : 'confirm.deleteNodes.confirmMany', {count: ids.size}),
             destructive: true,
         });
         if (!confirmed) return false;
@@ -504,7 +515,7 @@ export function useSitemapBuilder() {
             nodes: current.nodes.filter((node) => !ids.has(node.id)),
         }));
         if (ids.has(selectedId)) setSelectedId(document.nodes.find((node) => node.parentId === null)?.id ?? '');
-        setMessage(`${ids.size} ${ids.size === 1 ? 'Seite' : 'Seiten'} gelöscht`);
+        setMessage(t(ids.size === 1 ? 'status.pageDeletedOne' : 'status.pageDeletedMany', {count: ids.size}));
         return true;
     };
 
@@ -538,7 +549,7 @@ export function useSitemapBuilder() {
                 )),
             }));
             setSelectedId(draggedId);
-            setMessage('Seite neu verknüpft');
+            setMessage(t('status.relinked'));
         }
 
         setDraggedId(null);
@@ -557,7 +568,7 @@ export function useSitemapBuilder() {
         setSelectedId(nextDocument.nodes[0]?.id ?? '');
         setCurrentPath('');
         setDirty(true);
-        setMessage(`Neue Sitemap: ${project.name}`);
+        setMessage(t('status.newSitemap', {name: project.name}));
     };
 
     const importPages = async (
@@ -566,13 +577,13 @@ export function useSitemapBuilder() {
         baseUrl: string,
     ): Promise<boolean> => {
         if (dirty && !await requestConfirmation({
-            title: 'Aktuelles Projekt ersetzen?',
-            description: 'Der Import ersetzt die aktuelle Sitemap. Ungespeicherte Änderungen gehen verloren.',
-            confirmLabel: 'Ersetzen und importieren',
+            title: t('confirm.replaceProject.title'),
+            description: t('confirm.replaceProject.description'),
+            confirmLabel: t('confirm.replaceProject.confirm'),
             destructive: true,
         })) return false;
 
-        const nextDocument = createImportedDocument(pages, projectName, baseUrl);
+        const nextDocument = createImportedDocument(pages, projectName, baseUrl, locale);
         setDocument(nextDocument);
         setPast([]);
         setFuture([]);
@@ -580,7 +591,7 @@ export function useSitemapBuilder() {
         setCurrentPath('');
         setDirty(true);
         localStorage.removeItem('sitemap-builder-autosave');
-        setMessage(`${nextDocument.nodes.length} Seiten aus XML importiert`);
+        setMessage(t('status.importedPages', {count: nextDocument.nodes.length}));
         return true;
     };
 
@@ -588,18 +599,18 @@ export function useSitemapBuilder() {
 
     const exportFile = async (format: 'xml' | 'csv' | 'md' | 'html') => {
         const content = {
-            xml: documentToXml,
-            csv: documentToCsv,
-            md: documentToMarkdown,
-            html: documentToHtml,
-        }[format](document);
+            xml: () => documentToXml(document),
+            csv: () => documentToCsv(document, locale),
+            md: () => documentToMarkdown(document, locale),
+            html: () => documentToHtml(document, locale),
+        }[format]();
         const result = await ipc.app.ExportFile({content, format, suggestedName: suggestedExportName()});
-        setMessage(result.canceled ? 'Export abgebrochen' : `Exportiert: ${result.path.split('/').pop()}`);
+        setMessage(result.canceled ? t('status.exportCancelled') : t('status.exported', {name: result.path.split('/').pop() ?? ''}));
     };
 
     const exportPdf = async (base64: string) => {
         const result = await ipc.app.ExportFile({content: base64, format: 'pdf', suggestedName: suggestedExportName()});
-        setMessage(result.canceled ? 'Export abgebrochen' : `Exportiert: ${result.path.split('/').pop()}`);
+        setMessage(result.canceled ? t('status.exportCancelled') : t('status.exported', {name: result.path.split('/').pop() ?? ''}));
     };
 
     return {

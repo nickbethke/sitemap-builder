@@ -1,16 +1,24 @@
+import {DEFAULT_LOCALE, type Locale, translations} from '@/lib/i18n/translations.ts';
+
 export type PageType =
-    | 'Startseite'
-    | 'Landingpage'
-    | 'Leistungsseite'
-    | 'Inhaltsseite'
-    | 'Kontakt'
-    | 'Rechtliches'
-    | 'Archiv'
-    | 'Extern';
+    | 'home'
+    | 'landing'
+    | 'service'
+    | 'content'
+    | 'contact'
+    | 'legal'
+    | 'archive'
+    | 'external'
+    | 'form'
+    | 'product'
+    | 'category'
+    | 'account'
+    | 'error'
+    | 'search';
 
 export type LayoutDirection = 'horizontal' | 'vertical';
-export type SeoImportance = 'Hoch' | 'Mittel' | 'Niedrig';
-export type PageStatus = 'Geplant' | 'In Arbeit' | 'Freigabe' | 'Fertig';
+export type SeoImportance = 'high' | 'medium' | 'low' | 'none';
+export type PageStatus = 'planned' | 'in-progress' | 'review' | 'done';
 
 export type SitemapNode = {
     id: string;
@@ -33,7 +41,7 @@ export type SitemapNode = {
 export type ValidationIssue = {
     nodeId: string;
     level: 'error' | 'warning';
-    message: string;
+    messageKey: string;
 };
 
 export type SitemapProject = {
@@ -53,34 +61,34 @@ export type ProjectTemplateId = 'empty' | 'company' | 'local-service' | 'shop';
 
 export type ProjectTemplate = {
     id: ProjectTemplateId;
-    title: string;
-    description: string;
+    titleKey: string;
+    descriptionKey: string;
     pageCount: number;
 };
 
 export const PROJECT_TEMPLATES: ProjectTemplate[] = [
     {
         id: 'empty',
-        title: 'Leere Sitemap',
-        description: 'Mit einer Startseite beginnen und alles selbst strukturieren.',
+        titleKey: 'template.empty.title',
+        descriptionKey: 'template.empty.description',
         pageCount: 1,
     },
     {
         id: 'company',
-        title: 'Unternehmenswebsite',
-        description: 'Für Agenturen, B2B-Unternehmen und Dienstleister mit Portfolio.',
+        titleKey: 'template.company.title',
+        descriptionKey: 'template.company.description',
         pageCount: 11,
     },
     {
         id: 'local-service',
-        title: 'Lokaler Dienstleister',
-        description: 'Für regionale Angebote, Leistungen, Team und Kontaktanfragen.',
+        titleKey: 'template.local-service.title',
+        descriptionKey: 'template.local-service.description',
         pageCount: 10,
     },
     {
         id: 'shop',
-        title: 'Onlineshop',
-        description: 'Mit Kategorien, Produktseiten sowie den wichtigsten Service-Seiten.',
+        titleKey: 'template.shop.title',
+        descriptionKey: 'template.shop.description',
         pageCount: 12,
     },
 ];
@@ -108,27 +116,34 @@ const ROW_GAP = 34;
 const VERTICAL_LEVEL_GAP = 96;
 
 export const PAGE_TYPES: PageType[] = [
-    'Startseite',
-    'Landingpage',
-    'Leistungsseite',
-    'Inhaltsseite',
-    'Kontakt',
-    'Rechtliches',
-    'Archiv',
-    'Extern',
+    'home',
+    'landing',
+    'service',
+    'content',
+    'contact',
+    'form',
+    'product',
+    'category',
+    'archive',
+    'account',
+    'search',
+    'error',
+    'legal',
+    'external',
 ];
 
 export const PAGE_STATUSES: PageStatus[] = [
-    'Geplant',
-    'In Arbeit',
-    'Freigabe',
-    'Fertig',
+    'planned',
+    'in-progress',
+    'review',
+    'done',
 ];
 
 export const SEO_IMPORTANCE_LEVELS: SeoImportance[] = [
-    'Hoch',
-    'Mittel',
-    'Niedrig',
+    'high',
+    'medium',
+    'low',
+    'none',
 ];
 
 export const starterDocument: SitemapDocument = {
@@ -146,9 +161,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Startseite',
             description: 'Zentraler Einstieg in Marke und Angebot.',
             slug: '/',
-            pageType: 'Startseite',
-            seoImportance: 'Hoch',
-            status: 'In Arbeit',
+            pageType: 'home',
+            seoImportance: 'high',
+            status: 'in-progress',
             owner: 'NB',
             template: 'Homepage',
             noIndex: false,
@@ -160,9 +175,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Leistungen',
             description: 'Übersicht aller Kernleistungen.',
             slug: '/leistungen',
-            pageType: 'Leistungsseite',
-            seoImportance: 'Hoch',
-            status: 'Geplant',
+            pageType: 'service',
+            seoImportance: 'high',
+            status: 'planned',
             owner: 'LS',
             template: 'Übersicht',
             noIndex: false,
@@ -174,9 +189,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Über uns',
             description: 'Agentur, Haltung und Team.',
             slug: '/ueber-uns',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Mittel',
-            status: 'Freigabe',
+            pageType: 'content',
+            seoImportance: 'medium',
+            status: 'review',
             owner: 'NB',
             template: 'Standard',
             noIndex: false,
@@ -188,9 +203,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Kontakt',
             description: 'Anfrage und Kontaktdaten.',
             slug: '/kontakt',
-            pageType: 'Kontakt',
-            seoImportance: 'Mittel',
-            status: 'Fertig',
+            pageType: 'contact',
+            seoImportance: 'medium',
+            status: 'done',
             owner: 'LS',
             template: 'Kontakt',
             noIndex: false,
@@ -202,9 +217,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Webdesign',
             description: 'Webdesign-Leistung und Prozess.',
             slug: '/leistungen/webdesign',
-            pageType: 'Landingpage',
-            seoImportance: 'Hoch',
-            status: 'In Arbeit',
+            pageType: 'landing',
+            seoImportance: 'high',
+            status: 'in-progress',
             owner: 'NB',
             template: 'Leistung',
             noIndex: false,
@@ -216,9 +231,9 @@ export const starterDocument: SitemapDocument = {
             title: 'SEO',
             description: 'Organische Sichtbarkeit steigern.',
             slug: '/leistungen/seo',
-            pageType: 'Landingpage',
-            seoImportance: 'Hoch',
-            status: 'Geplant',
+            pageType: 'landing',
+            seoImportance: 'high',
+            status: 'planned',
             owner: 'MK',
             template: 'Leistung',
             noIndex: false,
@@ -230,9 +245,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Branding',
             description: 'Markenstrategie, Positionierung und visuelle Identität.',
             slug: '/leistungen/branding',
-            pageType: 'Landingpage',
-            seoImportance: 'Mittel',
-            status: 'Geplant',
+            pageType: 'landing',
+            seoImportance: 'medium',
+            status: 'planned',
             owner: 'LS',
             template: 'Leistung',
             noIndex: false,
@@ -244,9 +259,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Content Marketing',
             description: 'Inhalte, die Zielgruppen informieren und konvertieren.',
             slug: '/leistungen/content-marketing',
-            pageType: 'Landingpage',
-            seoImportance: 'Mittel',
-            status: 'In Arbeit',
+            pageType: 'landing',
+            seoImportance: 'medium',
+            status: 'in-progress',
             owner: 'MK',
             template: 'Leistung',
             noIndex: false,
@@ -258,9 +273,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Unser Prozess',
             description: 'Von Strategie und Konzept bis zum Launch.',
             slug: '/leistungen/webdesign/prozess',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Mittel',
-            status: 'Freigabe',
+            pageType: 'content',
+            seoImportance: 'medium',
+            status: 'review',
             owner: 'NB',
             template: 'Standard',
             noIndex: false,
@@ -272,9 +287,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Webdesign FAQ',
             description: 'Antworten auf häufige Fragen zu Projektablauf und Kosten.',
             slug: '/leistungen/webdesign/faq',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Niedrig',
-            status: 'Geplant',
+            pageType: 'content',
+            seoImportance: 'low',
+            status: 'planned',
             owner: 'NB',
             template: 'FAQ',
             noIndex: false,
@@ -286,9 +301,9 @@ export const starterDocument: SitemapDocument = {
             title: 'SEO Audit',
             description: 'Technische und inhaltliche Analyse der Website.',
             slug: '/leistungen/seo/audit',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Hoch',
-            status: 'In Arbeit',
+            pageType: 'content',
+            seoImportance: 'high',
+            status: 'in-progress',
             owner: 'MK',
             template: 'Leistung',
             noIndex: false,
@@ -300,9 +315,9 @@ export const starterDocument: SitemapDocument = {
             title: 'SEO Strategie',
             description: 'Keyword- und Content-Strategie für nachhaltiges Wachstum.',
             slug: '/leistungen/seo/strategie',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Hoch',
-            status: 'Geplant',
+            pageType: 'content',
+            seoImportance: 'high',
+            status: 'planned',
             owner: 'MK',
             template: 'Leistung',
             noIndex: false,
@@ -314,9 +329,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Team',
             description: 'Die Menschen hinter der Agentur.',
             slug: '/ueber-uns/team',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Mittel',
-            status: 'Fertig',
+            pageType: 'content',
+            seoImportance: 'medium',
+            status: 'done',
             owner: 'LS',
             template: 'Team',
             noIndex: false,
@@ -328,9 +343,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Werte & Haltung',
             description: 'Wofür wir arbeiten und wie wir zusammenarbeiten.',
             slug: '/ueber-uns/werte',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Niedrig',
-            status: 'Freigabe',
+            pageType: 'content',
+            seoImportance: 'low',
+            status: 'review',
             owner: 'NB',
             template: 'Standard',
             noIndex: false,
@@ -342,9 +357,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Projekte',
             description: 'Ausgewählte Arbeiten und Erfolgsgeschichten.',
             slug: '/projekte',
-            pageType: 'Archiv',
-            seoImportance: 'Hoch',
-            status: 'In Arbeit',
+            pageType: 'archive',
+            seoImportance: 'high',
+            status: 'in-progress',
             owner: 'LS',
             template: 'Übersicht',
             noIndex: false,
@@ -356,9 +371,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Musterkunde GmbH',
             description: 'Relaunch mit klarer Positionierung und neuer Leadstrecke.',
             slug: '/projekte/musterkunde',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Mittel',
-            status: 'Freigabe',
+            pageType: 'content',
+            seoImportance: 'medium',
+            status: 'review',
             owner: 'NB',
             template: 'Case Study',
             noIndex: false,
@@ -370,9 +385,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Wissen',
             description: 'Impulse zu Strategie, Design und digitalem Marketing.',
             slug: '/wissen',
-            pageType: 'Archiv',
-            seoImportance: 'Mittel',
-            status: 'Geplant',
+            pageType: 'archive',
+            seoImportance: 'medium',
+            status: 'planned',
             owner: 'MK',
             template: 'Übersicht',
             noIndex: false,
@@ -384,9 +399,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Website-Relaunch planen',
             description: 'Die wichtigsten Schritte für einen erfolgreichen Relaunch.',
             slug: '/wissen/website-relaunch-planen',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Hoch',
-            status: 'In Arbeit',
+            pageType: 'content',
+            seoImportance: 'high',
+            status: 'in-progress',
             owner: 'MK',
             template: 'Artikel',
             noIndex: false,
@@ -398,9 +413,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Informationsarchitektur',
             description: 'Wie eine klare Seitenstruktur Nutzerinnen und Nutzer führt.',
             slug: '/wissen/informationsarchitektur',
-            pageType: 'Inhaltsseite',
-            seoImportance: 'Mittel',
-            status: 'Geplant',
+            pageType: 'content',
+            seoImportance: 'medium',
+            status: 'planned',
             owner: 'MK',
             template: 'Artikel',
             noIndex: false,
@@ -412,9 +427,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Projekt anfragen',
             description: 'Briefing-Formular für neue Projekte.',
             slug: '/kontakt/projekt-anfragen',
-            pageType: 'Landingpage',
-            seoImportance: 'Hoch',
-            status: 'In Arbeit',
+            pageType: 'landing',
+            seoImportance: 'high',
+            status: 'in-progress',
             owner: 'LS',
             template: 'Formular',
             noIndex: false,
@@ -426,9 +441,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Impressum',
             description: 'Anbieterkennzeichnung.',
             slug: '/impressum',
-            pageType: 'Rechtliches',
-            seoImportance: 'Niedrig',
-            status: 'Fertig',
+            pageType: 'legal',
+            seoImportance: 'low',
+            status: 'done',
             owner: 'LS',
             template: 'Rechtliches',
             noIndex: false,
@@ -440,9 +455,9 @@ export const starterDocument: SitemapDocument = {
             title: 'Datenschutz',
             description: 'Informationen zur Verarbeitung personenbezogener Daten.',
             slug: '/datenschutz',
-            pageType: 'Rechtliches',
-            seoImportance: 'Niedrig',
-            status: 'Fertig',
+            pageType: 'legal',
+            seoImportance: 'low',
+            status: 'done',
             owner: 'LS',
             template: 'Rechtliches',
             noIndex: false,
@@ -472,7 +487,7 @@ export function createProjectDocument(
         parentId: string | null,
         title: string,
         slug: string,
-        pageType: PageType = 'Inhaltsseite',
+        pageType: PageType = 'content',
     ): SitemapNode => ({
         id,
         parentId,
@@ -480,59 +495,59 @@ export function createProjectDocument(
         description: '',
         slug,
         pageType,
-        seoImportance: parentId === null ? 'Hoch' : 'Mittel',
-        status: 'Geplant',
+        seoImportance: parentId === null ? 'high' : 'medium',
+        status: 'planned',
         owner: '',
-        template: pageType === 'Startseite' ? 'Homepage' : 'Standard',
+        template: pageType === 'home' ? 'Homepage' : 'Standard',
         noIndex: false,
         seoTitle: '',
         seoDescription: '',
         notes: '',
     });
-    const root = node('home', null, 'Startseite', '/', 'Startseite');
+    const root = node('home', null, 'Startseite', '/', 'home');
     let nodes: SitemapNode[] = [root];
 
     if (templateId === 'company') {
         nodes = [
             root,
-            node('services', 'home', 'Leistungen', '/leistungen', 'Leistungsseite'),
-            node('service-one', 'services', 'Beratung', '/leistungen/beratung', 'Landingpage'),
-            node('service-two', 'services', 'Umsetzung', '/leistungen/umsetzung', 'Landingpage'),
+            node('services', 'home', 'Leistungen', '/leistungen', 'service'),
+            node('service-one', 'services', 'Beratung', '/leistungen/beratung', 'landing'),
+            node('service-two', 'services', 'Umsetzung', '/leistungen/umsetzung', 'landing'),
             node('about', 'home', 'Über uns', '/ueber-uns'),
             node('team', 'about', 'Team', '/ueber-uns/team'),
-            node('cases', 'home', 'Projekte', '/projekte', 'Archiv'),
+            node('cases', 'home', 'Projekte', '/projekte', 'archive'),
             node('case-one', 'cases', 'Projektbeispiel', '/projekte/projektbeispiel'),
-            node('insights', 'home', 'Wissen', '/wissen', 'Archiv'),
-            node('contact', 'home', 'Kontakt', '/kontakt', 'Kontakt'),
-            node('privacy', 'home', 'Datenschutz', '/datenschutz', 'Rechtliches'),
+            node('insights', 'home', 'Wissen', '/wissen', 'archive'),
+            node('contact', 'home', 'Kontakt', '/kontakt', 'contact'),
+            node('privacy', 'home', 'Datenschutz', '/datenschutz', 'legal'),
         ];
     } else if (templateId === 'local-service') {
         nodes = [
             root,
-            node('services', 'home', 'Leistungen', '/leistungen', 'Leistungsseite'),
-            node('service-one', 'services', 'Hauptleistung', '/leistungen/hauptleistung', 'Landingpage'),
-            node('service-two', 'services', 'Weitere Leistung', '/leistungen/weitere-leistung', 'Landingpage'),
-            node('areas', 'home', 'Einzugsgebiet', '/einzugsgebiet', 'Landingpage'),
+            node('services', 'home', 'Leistungen', '/leistungen', 'service'),
+            node('service-one', 'services', 'Hauptleistung', '/leistungen/hauptleistung', 'landing'),
+            node('service-two', 'services', 'Weitere Leistung', '/leistungen/weitere-leistung', 'landing'),
+            node('areas', 'home', 'Einzugsgebiet', '/einzugsgebiet', 'landing'),
             node('area-one', 'areas', 'Standort', '/einzugsgebiet/standort'),
             node('about', 'home', 'Über uns', '/ueber-uns'),
             node('reviews', 'home', 'Kundenstimmen', '/kundenstimmen'),
-            node('contact', 'home', 'Kontakt', '/kontakt', 'Kontakt'),
-            node('imprint', 'home', 'Impressum', '/impressum', 'Rechtliches'),
+            node('contact', 'home', 'Kontakt', '/kontakt', 'contact'),
+            node('imprint', 'home', 'Impressum', '/impressum', 'legal'),
         ];
     } else if (templateId === 'shop') {
         nodes = [
             root,
-            node('catalog', 'home', 'Shop', '/shop', 'Archiv'),
-            node('category-one', 'catalog', 'Kategorie 1', '/shop/kategorie-1', 'Archiv'),
-            node('product-one', 'category-one', 'Produkt 1', '/shop/kategorie-1/produkt-1', 'Landingpage'),
-            node('product-two', 'category-one', 'Produkt 2', '/shop/kategorie-1/produkt-2', 'Landingpage'),
-            node('category-two', 'catalog', 'Kategorie 2', '/shop/kategorie-2', 'Archiv'),
+            node('catalog', 'home', 'Shop', '/shop', 'category'),
+            node('category-one', 'catalog', 'Kategorie 1', '/shop/kategorie-1', 'category'),
+            node('product-one', 'category-one', 'Produkt 1', '/shop/kategorie-1/produkt-1', 'product'),
+            node('product-two', 'category-one', 'Produkt 2', '/shop/kategorie-1/produkt-2', 'product'),
+            node('category-two', 'catalog', 'Kategorie 2', '/shop/kategorie-2', 'category'),
             node('about', 'home', 'Über uns', '/ueber-uns'),
-            node('journal', 'home', 'Magazin', '/magazin', 'Archiv'),
-            node('contact', 'home', 'Kontakt', '/kontakt', 'Kontakt'),
-            node('shipping', 'home', 'Versand & Zahlung', '/versand-zahlung', 'Inhaltsseite'),
-            node('returns', 'home', 'Widerruf', '/widerruf', 'Rechtliches'),
-            node('privacy', 'home', 'Datenschutz', '/datenschutz', 'Rechtliches'),
+            node('journal', 'home', 'Magazin', '/magazin', 'archive'),
+            node('contact', 'home', 'Kontakt', '/kontakt', 'contact'),
+            node('shipping', 'home', 'Versand & Zahlung', '/versand-zahlung', 'content'),
+            node('returns', 'home', 'Widerruf', '/widerruf', 'legal'),
+            node('privacy', 'home', 'Datenschutz', '/datenschutz', 'legal'),
         ];
     }
 
@@ -550,40 +565,40 @@ export function validateDocument(document: SitemapDocument): ValidationIssue[] {
     document.nodes.forEach((node) => slugCounts.set(node.slug, (slugCounts.get(node.slug) ?? 0) + 1));
 
     document.nodes.forEach((node) => {
-        if (!node.title.trim()) issues.push({nodeId: node.id, level: 'error', message: 'Seitentitel fehlt'});
+        if (!node.title.trim()) issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.titleMissing'});
         if (!node.slug.startsWith('/')) issues.push({
             nodeId: node.id,
             level: 'error',
-            message: 'Slug muss mit / beginnen'
+            messageKey: 'validation.slugMustStartWithSlash'
         });
-        if (/\s/.test(node.slug)) issues.push({nodeId: node.id, level: 'error', message: 'Slug enthält Leerzeichen'});
+        if (/\s/.test(node.slug)) issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.slugContainsSpaces'});
         if ((slugCounts.get(node.slug) ?? 0) > 1) issues.push({
             nodeId: node.id,
             level: 'error',
-            message: 'Slug ist doppelt'
+            messageKey: 'validation.slugDuplicate'
         });
         if (node.parentId && !document.nodes.some((item) => item.id === node.parentId)) {
-            issues.push({nodeId: node.id, level: 'error', message: 'Übergeordnete Seite fehlt'});
+            issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.parentMissing'});
         }
         if (!node.seoTitle?.trim() && !node.noIndex) issues.push({
             nodeId: node.id,
             level: 'warning',
-            message: 'SEO-Titel fehlt'
+            messageKey: 'validation.seoTitleMissing'
         });
         if ((node.seoTitle?.length ?? 0) > 60) issues.push({
             nodeId: node.id,
             level: 'warning',
-            message: 'SEO-Titel ist länger als 60 Zeichen'
+            messageKey: 'validation.seoTitleTooLong'
         });
         if (!node.seoDescription?.trim() && !node.noIndex) issues.push({
             nodeId: node.id,
             level: 'warning',
-            message: 'SEO-Beschreibung fehlt'
+            messageKey: 'validation.seoDescriptionMissing'
         });
         if ((node.seoDescription?.length ?? 0) > 160) issues.push({
             nodeId: node.id,
             level: 'warning',
-            message: 'SEO-Beschreibung ist länger als 160 Zeichen'
+            messageKey: 'validation.seoDescriptionTooLong'
         });
     });
     return issues;
@@ -600,10 +615,18 @@ export function documentToXml(document: SitemapDocument): string {
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
-export function documentToCsv(document: SitemapDocument): string {
+export function documentToCsv(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
+    const t = (key: string) => translations[locale][key] ?? key;
     const quote = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-    const header = ['Titel', 'URL', 'Seitentyp', 'Status', 'SEO-Relevanz', 'Verantwortlich', 'SEO-Titel', 'SEO-Beschreibung', 'Noindex', 'Redirect von'];
-    const rows = document.nodes.map((node) => [node.title, node.slug, node.pageType, node.status, node.seoImportance, node.owner, node.seoTitle, node.seoDescription, node.noIndex ? 'Ja' : 'Nein', node.redirectFrom]);
+    const header = [
+        t('export.csv.title'), t('export.csv.url'), t('export.csv.pageType'), t('export.csv.status'),
+        t('export.csv.seoImportance'), t('export.csv.owner'), t('export.csv.seoTitle'), t('export.csv.seoDescription'),
+        t('export.csv.noIndex'), t('export.csv.redirectFrom'),
+    ];
+    const rows = document.nodes.map((node) => [
+        node.title, node.slug, t(`pageType.${node.pageType}`), t(`pageStatus.${node.status}`), t(`seoImportance.${node.seoImportance}`),
+        node.owner, node.seoTitle, node.seoDescription, node.noIndex ? t('export.csv.yes') : t('export.csv.no'), node.redirectFrom,
+    ]);
     return [header, ...rows].map((row) => row.map(quote).join(';')).join('\n');
 }
 
@@ -615,20 +638,26 @@ function groupByParent(nodes: SitemapNode[]): Map<string | null, SitemapNode[]> 
     return childrenByParent;
 }
 
-export function documentToMarkdown(document: SitemapDocument): string {
+export function documentToMarkdown(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
+    const t = (key: string) => translations[locale][key] ?? key;
     const childrenByParent = groupByParent(document.nodes);
     const lines: string[] = [`# ${document.project.name}`, ''];
-    if (document.project.client) lines.push(`Kunde: ${document.project.client}`);
-    if (document.project.baseUrl) lines.push(`Basis-URL: ${document.project.baseUrl}`);
+    if (document.project.client) lines.push(`${t('export.client')}: ${document.project.client}`);
+    if (document.project.baseUrl) lines.push(`${t('export.baseUrl')}: ${document.project.baseUrl}`);
     lines.push('');
 
     const walk = (parentId: string | null, depth: number) => {
         for (const node of childrenByParent.get(parentId) ?? []) {
             const indent = '  '.repeat(depth);
-            const details = [node.pageType, node.status, `SEO: ${node.seoImportance}`, node.noIndex ? 'Noindex' : null]
+            const details = [
+                t(`pageType.${node.pageType}`),
+                t(`pageStatus.${node.status}`),
+                `${t('export.seoLabel')}: ${t(`seoImportance.${node.seoImportance}`)}`,
+                node.noIndex ? t('export.noIndexLabel') : null,
+            ]
                 .filter(Boolean)
                 .join(' · ');
-            lines.push(`${indent}- [${node.title || 'Ohne Titel'}](${node.slug || '/'}) — ${details}`);
+            lines.push(`${indent}- [${node.title || t('export.untitled')}](${node.slug || '/'}) — ${details}`);
             walk(node.id, depth + 1);
         }
     };
@@ -637,12 +666,12 @@ export function documentToMarkdown(document: SitemapDocument): string {
     return `${lines.join('\n')}\n`;
 }
 
-export function documentToHtml(document: SitemapDocument): string {
+export function documentToHtml(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
+    const t = (key: string) => translations[locale][key] ?? key;
     const childrenByParent = groupByParent(document.nodes);
     const escape = (value: string) => value.replace(/[<>&]/g, (char) => ({
         '<': '&lt;', '>': '&gt;', '&': '&amp;',
     })[char] ?? char);
-    const badgeClass = (value: string) => value.toLowerCase().replace(/\s+/g, '-');
 
     const renderList = (parentId: string | null): string => {
         const children = childrenByParent.get(parentId) ?? [];
@@ -651,12 +680,12 @@ export function documentToHtml(document: SitemapDocument): string {
         const items = children.map((node) => `
             <li>
                 <div class="node">
-                    <strong>${escape(node.title || 'Ohne Titel')}</strong>
+                    <strong>${escape(node.title || t('export.untitled'))}</strong>
                     <code>${escape(node.slug || '/')}</code>
-                    <span class="badge badge-${badgeClass(node.status)}">${escape(node.status)}</span>
-                    <span class="badge">${escape(node.pageType)}</span>
-                    <span class="badge badge-seo-${badgeClass(node.seoImportance)}">${escape(node.seoImportance)}</span>
-                    ${node.noIndex ? '<span class="badge badge-noindex">Noindex</span>' : ''}
+                    <span class="badge badge-${node.status}">${escape(t(`pageStatus.${node.status}`))}</span>
+                    <span class="badge">${escape(t(`pageType.${node.pageType}`))}</span>
+                    <span class="badge badge-seo-${node.seoImportance}">${escape(t(`seoImportance.${node.seoImportance}`))}</span>
+                    ${node.noIndex ? `<span class="badge badge-noindex">${escape(t('export.noIndexLabel'))}</span>` : ''}
                 </div>
                 ${renderList(node.id)}
             </li>`).join('');
@@ -666,10 +695,10 @@ export function documentToHtml(document: SitemapDocument): string {
     const metaParts = [document.project.client, document.project.baseUrl].filter(Boolean).map(escape);
 
     return `<!doctype html>
-<html lang="de">
+<html lang="${locale}">
 <head>
 <meta charset="utf-8">
-<title>${escape(document.project.name)} – Sitemap</title>
+<title>${escape(document.project.name)}${t('export.htmlTitleSuffix')}</title>
 <style>
   :root { color-scheme: light; }
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 40px; background: #f4f6fb; color: #1a2b4a; }
@@ -682,13 +711,14 @@ export function documentToHtml(document: SitemapDocument): string {
   .node strong { font-size: 14px; }
   .node code { font-size: 11px; color: #2368ff; background: #eef2ff; padding: 2px 6px; border-radius: 4px; }
   .badge { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; padding: 2px 8px; border-radius: 999px; background: #eef1f8; color: #55618a; }
-  .badge-fertig { background: #dcfce7; color: #15803d; }
-  .badge-in-arbeit { background: #fef3c7; color: #b45309; }
-  .badge-freigabe { background: #dbeafe; color: #1d4ed8; }
-  .badge-geplant { background: #f1f2f6; color: #55618a; }
-  .badge-seo-hoch { background: #dbeafe; color: #1d4ed8; }
-  .badge-seo-mittel { background: #fef3c7; color: #b45309; }
-  .badge-seo-niedrig { background: #dcfce7; color: #15803d; }
+  .badge-done { background: #dcfce7; color: #15803d; }
+  .badge-in-progress { background: #fef3c7; color: #b45309; }
+  .badge-review { background: #dbeafe; color: #1d4ed8; }
+  .badge-planned { background: #f1f2f6; color: #55618a; }
+  .badge-seo-high { background: #dbeafe; color: #1d4ed8; }
+  .badge-seo-medium { background: #fef3c7; color: #b45309; }
+  .badge-seo-low { background: #dcfce7; color: #15803d; }
+  .badge-seo-none { background: #f1f2f6; color: #8a8f9c; }
   .badge-noindex { background: #fee2e2; color: #b91c1c; }
 </style>
 </head>

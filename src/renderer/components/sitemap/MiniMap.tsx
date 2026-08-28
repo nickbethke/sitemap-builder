@@ -55,8 +55,8 @@ export function MiniMap({
 
     return (
         <div
-            className="absolute bottom-3 right-3 z-10 cursor-crosshair overflow-hidden rounded-md border border-border bg-[hsl(var(--panel)/.85)] shadow-sm backdrop-blur-md"
-            style={{width: mapWidth, height: mapHeight}}
+            className="absolute bottom-3 right-3 z-10 cursor-crosshair overflow-hidden rounded-md border border-border bg-[hsl(var(--panel)/.85)] p-px shadow-sm backdrop-blur-md"
+            style={{width: mapWidth + 2, height: mapHeight + 2}}
             onPointerDown={startDrag}
             onClick={(event) => event.stopPropagation()}
         >

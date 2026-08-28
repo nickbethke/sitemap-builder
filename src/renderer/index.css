@@ -4,54 +4,56 @@
 
 @layer base {
     :root {
-        --background: 216 60% 98%;
-        --foreground: 220 74% 10%;
+        --background: 0 0% 100%;
+        --foreground: 240 10% 3.9%;
         --card: 0 0% 100%;
-        --card-foreground: 220 74% 10%;
+        --card-foreground: 240 10% 3.9%;
         --popover: 0 0% 100%;
-        --popover-foreground: 220 74% 10%;
-        --primary: 221 100% 57%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 216 48% 95%;
-        --secondary-foreground: 218 66% 18%;
-        --muted: 216 38% 96%;
-        --muted-foreground: 218 16% 44%;
-        --accent: 194 100% 95%;
-        --accent-foreground: 221 100% 45%;
-        --destructive: 0 72% 53%;
-        --destructive-foreground: 0 0% 100%;
-        --border: 216 28% 88%;
-        --input: 216 26% 83%;
-        --ring: 194 100% 55%;
-        --radius: .65rem;
-        --panel: 0 0% 100%;
-        --canvas: 216 48% 97%;
-        --line: 218 22% 76%;
+        --popover-foreground: 240 10% 3.9%;
+        --primary: 240 5.9% 10%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 240 4.8% 95.9%;
+        --secondary-foreground: 240 5.9% 10%;
+        --muted: 240 4.8% 95.9%;
+        --muted-foreground: 240 3.8% 46.1%;
+        --accent: 240 4.8% 95.9%;
+        --accent-foreground: 240 5.9% 10%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 240 5.9% 88%;
+        --input: 240 5.9% 88%;
+        --ring: 240 5.9% 10%;
+        --radius: .25rem;
+        --panel: 240 5% 98%;
+        --canvas: 240 6% 88%;
+        --line: 240 6% 80%;
+        --success: 142 71% 45%;
     }
 
     .dark {
-        --background: 220 74% 8%;
-        --foreground: 216 40% 96%;
-        --card: 218 66% 14%;
-        --card-foreground: 216 40% 96%;
-        --popover: 218 66% 14%;
-        --popover-foreground: 216 40% 96%;
-        --primary: 221 100% 64%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 218 48% 18%;
-        --secondary-foreground: 216 40% 96%;
-        --muted: 218 42% 16%;
-        --muted-foreground: 214 18% 66%;
-        --accent: 218 58% 21%;
-        --accent-foreground: 194 100% 72%;
-        --destructive: 0 62% 43%;
-        --destructive-foreground: 0 0% 100%;
-        --border: 218 34% 24%;
-        --input: 218 32% 28%;
-        --ring: 194 100% 55%;
-        --panel: 218 66% 12%;
-        --canvas: 220 74% 9%;
-        --line: 218 26% 32%;
+        --background: 240 6% 12%;
+        --foreground: 0 0% 95%;
+        --card: 240 6% 19%;
+        --card-foreground: 0 0% 95%;
+        --popover: 240 6% 19%;
+        --popover-foreground: 0 0% 95%;
+        --primary: 0 0% 95%;
+        --primary-foreground: 240 5.9% 12%;
+        --secondary: 240 4% 20%;
+        --secondary-foreground: 0 0% 95%;
+        --muted: 240 4% 20%;
+        --muted-foreground: 240 5% 68%;
+        --accent: 240 4% 20%;
+        --accent-foreground: 0 0% 95%;
+        --destructive: 0 62.8% 40%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 240 4% 22%;
+        --input: 240 4% 22%;
+        --ring: 240 4.9% 83.9%;
+        --panel: 240 6% 14%;
+        --canvas: 240 7% 9%;
+        --line: 240 5% 26%;
+        --success: 142 60% 50%;
     }
 
     * {
@@ -66,7 +68,15 @@
 
     body {
         @apply m-0 bg-background text-foreground antialiased;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: -0.005em;
+    }
+
+    h1,
+    h2,
+    h3,
+    strong {
+        letter-spacing: -0.02em;
     }
 
     button,
@@ -78,5 +88,18 @@
 
     button {
         -webkit-app-region: no-drag;
+    }
+}
+
+@layer components {
+    .blueprint-canvas {
+        background-color: hsl(var(--canvas));
+        background-image:
+            linear-gradient(hsl(var(--line) / .18) 1px, transparent 1px),
+            linear-gradient(90deg, hsl(var(--line) / .18) 1px, transparent 1px),
+            linear-gradient(hsl(var(--line) / .08) 1px, transparent 1px),
+            linear-gradient(90deg, hsl(var(--line) / .08) 1px, transparent 1px);
+        background-position: -1px -1px;
+        background-size: 90px 90px, 90px 90px, 18px 18px, 18px 18px;
     }
 }

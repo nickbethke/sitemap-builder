@@ -1,5 +1,13 @@
 import {Button} from '@/components/ui/button.tsx';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu.tsx';
+import {useTranslation} from '@/lib/i18n/context.tsx';
 import {
     ArrowDown,
     ArrowUp,
@@ -23,8 +31,6 @@ type CardContextMenuProps = {
     onMoveUpLevel: () => void;
 };
 
-const itemClass = 'flex min-h-8 cursor-default select-none items-center gap-2 rounded-md px-2 text-xs text-popover-foreground outline-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-40';
-
 export function CardContextMenu({
     canDelete,
     canMoveUp,
@@ -37,64 +43,70 @@ export function CardContextMenu({
     onMoveDown,
     onMoveUpLevel,
 }: CardContextMenuProps) {
+    const {t} = useTranslation();
+
     return (
-        <DropdownMenu.Root>
-            <DropdownMenu.Trigger asChild>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
                     size="icon"
                     className="size-6 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-primary"
-                    aria-label="Kachelaktionen"
-                    title="Kachelaktionen"
+                    aria-label={t('cardMenu.aria')}
+                    title={t('cardMenu.aria')}
                     onClick={(event) => event.stopPropagation()}
                 >
-                    <MoreHorizontal size={16}/>
+                    <MoreHorizontal/>
                 </Button>
-            </DropdownMenu.Trigger>
+            </DropdownMenuTrigger>
 
-            <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                    className="z-50 min-w-48 rounded-lg border border-border bg-popover p-1 shadow-xl"
-                    sideOffset={5}
-                    align="end"
-                    onClick={(event) => event.stopPropagation()}
-                >
-                    <DropdownMenu.Item className={itemClass} onSelect={onAddChild}>
-                        <Plus size={14}/>
-                        Unterseite erstellen
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item className={itemClass} onSelect={onDuplicate}>
-                        <Copy size={14}/>
-                        Duplizieren
-                    </DropdownMenu.Item>
+            <DropdownMenuContent
+                className="min-w-48 text-xs"
+                sideOffset={5}
+                align="end"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <DropdownMenuGroup>
+                    <DropdownMenuItem className="text-xs" onSelect={onAddChild}>
+                        <Plus/>
+                        {t('cardMenu.addChild')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs" onSelect={onDuplicate}>
+                        <Copy/>
+                        {t('cardMenu.duplicate')}
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
 
-                    <DropdownMenu.Separator className="m-1 h-px bg-border"/>
+                <DropdownMenuSeparator/>
 
-                    <DropdownMenu.Item className={itemClass} disabled={!canMoveUp} onSelect={onMoveUp}>
-                        <ArrowUp size={14}/>
-                        Nach oben sortieren
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item className={itemClass} disabled={!canMoveDown} onSelect={onMoveDown}>
-                        <ArrowDown size={14}/>
-                        Nach unten sortieren
-                    </DropdownMenu.Item>
-                    <DropdownMenu.Item className={itemClass} disabled={!canMoveUpLevel} onSelect={onMoveUpLevel}>
-                        <CornerLeftUp size={14}/>
-                        Eine Ebene hoch
-                    </DropdownMenu.Item>
+                <DropdownMenuGroup>
+                    <DropdownMenuItem className="text-xs" disabled={!canMoveUp} onSelect={onMoveUp}>
+                        <ArrowUp/>
+                        {t('cardMenu.moveUp')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs" disabled={!canMoveDown} onSelect={onMoveDown}>
+                        <ArrowDown/>
+                        {t('cardMenu.moveDown')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-xs" disabled={!canMoveUpLevel} onSelect={onMoveUpLevel}>
+                        <CornerLeftUp/>
+                        {t('cardMenu.moveUpLevel')}
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
 
-                    <DropdownMenu.Separator className="m-1 h-px bg-border"/>
+                <DropdownMenuSeparator/>
 
-                    <DropdownMenu.Item
-                        className={`${itemClass} text-destructive`}
+                <DropdownMenuGroup>
+                    <DropdownMenuItem
+                        className="text-xs text-destructive focus:text-destructive"
                         disabled={!canDelete}
                         onSelect={onDelete}
                     >
-                        <Trash2 size={14}/>
-                        Löschen
-                    </DropdownMenu.Item>
-                </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+                        <Trash2/>
+                        {t('cardMenu.delete')}
+                    </DropdownMenuItem>
+                </DropdownMenuGroup>
+            </DropdownMenuContent>
+        </DropdownMenu>
     );
 }

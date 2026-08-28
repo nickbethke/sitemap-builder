@@ -2,8 +2,9 @@ import {AccordionSection} from '@/components/sitemap/AccordionSection.tsx';
 import {Button} from '@/components/ui/button.tsx';
 import {Checkbox} from '@/components/ui/checkbox.tsx';
 import {Input} from '@/components/ui/input.tsx';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
 import {Textarea} from '@/components/ui/textarea.tsx';
+import {useTranslation} from '@/lib/i18n/context.tsx';
 import {
     PAGE_STATUSES,
     PAGE_TYPES,
@@ -51,21 +52,23 @@ export function Inspector({
     onDuplicate,
     onDelete,
 }: InspectorProps) {
+    const {t} = useTranslation();
+
     if (!selectedNode) {
         return (
             <aside className={inspectorClass}>
                 <div className="flex items-start justify-between border-b border-border px-5 pb-4 pt-5">
                     <div>
-                        <span className={eyebrowClass}>Keine Seite ausgewählt</span>
-                        <h2 className="mb-0 mt-1 text-base tracking-tight">Projekteinstellungen</h2>
+                        <span className={eyebrowClass}>{t('inspector.noPageSelected')}</span>
+                        <h2 className="mb-0 mt-1 text-base tracking-tight">{t('inspector.projectSettings')}</h2>
                     </div>
                 </div>
 
                 <div className="overflow-y-auto">
-                    <AccordionSection title="Projekt" defaultOpen>
+                    <AccordionSection title={t('inspector.section.project')} defaultOpen>
                         <div className={formGroupClass}>
                             <label className={labelClass}>
-                                Kunde
+                                {t('inspector.client')}
                                 <Input
                                     className={fieldClass}
                                     value={project.client}
@@ -73,7 +76,7 @@ export function Inspector({
                                 />
                             </label>
                             <label className={labelClass}>
-                                Basis-URL
+                                {t('inspector.baseUrl')}
                                 <Input
                                     className={fieldClass}
                                     value={project.baseUrl}
@@ -83,19 +86,23 @@ export function Inspector({
                         </div>
                     </AccordionSection>
 
-                    <AccordionSection title="SEO-Relevanz" defaultOpen>
+                    <AccordionSection title={t('inspector.section.seoImportance')} defaultOpen>
                         <div className="flex flex-col gap-2 text-[10px] text-muted-foreground [&>span]:flex [&>span]:items-center [&>span]:gap-2">
                             <span>
-                                <i className="size-2 rounded-full bg-blue-600 shadow-[0_0_0_3px_rgb(35_104_255_/_0.12)]"/>
-                                Hoch
+                                <i className="size-2 rounded-full bg-primary shadow-[0_0_0_3px_hsl(var(--primary)/.12)]"/>
+                                {t('seoImportance.high')}
                             </span>
                             <span>
                                 <i className="size-2 rounded-full bg-amber-500 shadow-[0_0_0_3px_rgb(227_155_57_/_0.12)]"/>
-                                Mittel
+                                {t('seoImportance.medium')}
                             </span>
                             <span>
-                                <i className="size-2 rounded-full bg-emerald-600/70 shadow-[0_0_0_3px_rgb(104_167_135_/_0.12)]"/>
-                                Niedrig
+                                <i className="size-2 rounded-full bg-[hsl(var(--success))] shadow-[0_0_0_3px_hsl(var(--success)/.12)]"/>
+                                {t('seoImportance.low')}
+                            </span>
+                            <span>
+                                <i className="size-2 rounded-full bg-muted-foreground/40"/>
+                                {t('seoImportance.none')}
                             </span>
                         </div>
                     </AccordionSection>
@@ -104,8 +111,8 @@ export function Inspector({
                 <div className="flex gap-2 border-t border-border bg-[hsl(var(--panel))] px-5 py-3 text-muted-foreground">
                     <CircleHelp className="mt-px shrink-0 text-primary" size={17}/>
                     <p className="m-0 text-[10px] leading-relaxed">
-                        <strong className="block text-foreground">Drag & Drop</strong>
-                        Karte auf andere Karte ziehen, um Parent-Relation zu ändern.
+                        <strong className="block text-foreground">{t('inspector.dragDrop.title')}</strong>
+                        {t('inspector.dragDrop.description')}
                     </p>
                 </div>
             </aside>
@@ -116,19 +123,19 @@ export function Inspector({
         <aside className={inspectorClass}>
             <div className="flex items-start justify-between border-b border-border px-5 pb-4 pt-5">
                 <div>
-                    <span className={eyebrowClass}>Seitendetails</span>
+                    <span className={eyebrowClass}>{t('inspector.pageDetails')}</span>
                     <h2 className="mb-0 mt-1 max-w-52 truncate text-base tracking-tight">
-                        {selectedNode.title || 'Ohne Titel'}
+                        {selectedNode.title || t('export.untitled')}
                     </h2>
                 </div>
             </div>
 
             <div className="overflow-y-auto">
-                <AccordionSection title="Seite" defaultOpen>
+                <AccordionSection title={t('inspector.section.page')} defaultOpen>
                     <div className={formGroupClass}>
                         <label className={labelClass}>
                             <span className="inline-flex items-baseline gap-1">
-                                Titel <b className="text-destructive">*</b>
+                                {t('inspector.title')} <b className="text-destructive">*</b>
                             </span>
                             <Input
                                 className={fieldClass}
@@ -138,7 +145,7 @@ export function Inspector({
                         </label>
                         <label className={labelClass}>
                             <span className="inline-flex items-baseline gap-1">
-                                Slug / URL <b className="text-destructive">*</b>
+                                {t('inspector.slugUrl')} <b className="text-destructive">*</b>
                             </span>
                             <Input
                                 className={fieldClass}
@@ -147,7 +154,7 @@ export function Inspector({
                             />
                         </label>
                         <label className={labelClass}>
-                            Beschreibung
+                            {t('inspector.description')}
                             <Textarea
                                 className={textareaClass}
                                 value={selectedNode.description}
@@ -159,29 +166,33 @@ export function Inspector({
 
                     <div className={formGridClass}>
                         <label className={labelClass}>
-                            Seitentyp
+                            {t('inspector.pageType')}
                             <Select value={selectedNode.pageType} onValueChange={(value) => onUpdateNode('pageType', value as PageType)}>
                                 <SelectTrigger className={`${fieldClass} w-full`}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {PAGE_TYPES.map((item: PageType) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                                    <SelectGroup>
+                                    {PAGE_TYPES.map((item: PageType) => <SelectItem key={item} value={item}>{t(`pageType.${item}`)}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </label>
                         <label className={labelClass}>
-                            Status
+                            {t('inspector.status')}
                             <Select value={selectedNode.status} onValueChange={(value) => onUpdateNode('status', value as PageStatus)}>
                                 <SelectTrigger className={`${fieldClass} w-full`}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {PAGE_STATUSES.map((item: PageStatus) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                                    <SelectGroup>
+                                    {PAGE_STATUSES.map((item: PageStatus) => <SelectItem key={item} value={item}>{t(`pageStatus.${item}`)}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </label>
                         <label className={labelClass}>
-                            Verantwortlich
+                            {t('inspector.owner')}
                             <Input
                                 className={fieldClass}
                                 value={selectedNode.owner}
@@ -191,10 +202,10 @@ export function Inspector({
                     </div>
                 </AccordionSection>
 
-                <AccordionSection title="SEO" defaultOpen>
+                <AccordionSection title={t('inspector.section.seo')} defaultOpen>
                     <div className={formGroupClass}>
                         <label className={labelClass}>
-                            SEO-Titel
+                            {t('inspector.seoTitle')}
                             <Input
                                 className={fieldClass}
                                 value={selectedNode.seoTitle ?? ''}
@@ -202,7 +213,7 @@ export function Inspector({
                             />
                         </label>
                         <label className={labelClass}>
-                            SEO-Beschreibung
+                            {t('inspector.seoDescription')}
                             <Textarea
                                 className={textareaClass}
                                 value={selectedNode.seoDescription ?? ''}
@@ -214,13 +225,15 @@ export function Inspector({
 
                     <div className={formGridClass}>
                         <label className={labelClass}>
-                            SEO-Relevanz
+                            {t('inspector.seoRelevance')}
                             <Select value={selectedNode.seoImportance} onValueChange={(value) => onUpdateNode('seoImportance', value as SeoImportance)}>
                                 <SelectTrigger className={`${fieldClass} w-full`}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {SEO_IMPORTANCE_LEVELS.map((item: SeoImportance) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                                    <SelectGroup>
+                                    {SEO_IMPORTANCE_LEVELS.map((item: SeoImportance) => <SelectItem key={item} value={item}>{t(`seoImportance.${item}`)}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                         </label>
@@ -233,16 +246,16 @@ export function Inspector({
                             onCheckedChange={(checked) => onUpdateNode('noIndex', checked === true)}
                         />
                         <span className="block">
-                            <strong className="block text-[10px] text-foreground">Von Indexierung ausschließen</strong>
-                            <small className="mt-0.5 block font-normal leading-snug">Setzt noindex.</small>
+                            <strong className="block text-[10px] text-foreground">{t('inspector.noIndex.title')}</strong>
+                            <small className="mt-0.5 block font-normal leading-snug">{t('inspector.noIndex.description')}</small>
                         </span>
                     </label>
                 </AccordionSection>
 
-                <AccordionSection title="Erweitert & Notizen">
+                <AccordionSection title={t('inspector.section.advanced')}>
                     <div className={formGroupClass}>
                         <label className={labelClass}>
-                            Template
+                            {t('inspector.template')}
                             <Input
                                 className={fieldClass}
                                 value={selectedNode.template}
@@ -250,7 +263,7 @@ export function Inspector({
                             />
                         </label>
                         <label className={labelClass}>
-                            Alte URL / Redirect von
+                            {t('inspector.redirectFrom')}
                             <Input
                                 className={fieldClass}
                                 value={selectedNode.redirectFrom ?? ''}
@@ -259,7 +272,7 @@ export function Inspector({
                             />
                         </label>
                         <label className={labelClass}>
-                            Notizen
+                            {t('inspector.notes')}
                             <Textarea
                                 className={textareaClass}
                                 value={selectedNode.notes}
@@ -272,15 +285,15 @@ export function Inspector({
             </div>
 
             <div className="flex gap-2 border-t border-border bg-[hsl(var(--panel))] px-5 py-3 [&_button]:h-9 [&_button]:gap-2 [&_button]:text-[10px]">
-                <Button variant="outline" size="icon" aria-label="Innerhalb Parent nach oben sortieren" title="Nach oben" disabled={!canMoveUp} onClick={onMoveUp}>
+                <Button variant="outline" size="icon" aria-label={t('inspector.moveUpAria')} title={t('inspector.moveUp')} disabled={!canMoveUp} onClick={onMoveUp}>
                     <ArrowUp size={15}/>
                 </Button>
-                <Button variant="outline" size="icon" aria-label="Innerhalb Parent nach unten sortieren" title="Nach unten" disabled={!canMoveDown} onClick={onMoveDown}>
+                <Button variant="outline" size="icon" aria-label={t('inspector.moveDownAria')} title={t('inspector.moveDown')} disabled={!canMoveDown} onClick={onMoveDown}>
                     <ArrowDown size={15}/>
                 </Button>
                 <Button className="flex-1" variant="outline" size="sm" onClick={onDuplicate}>
                     <Copy size={15}/>
-                    Duplizieren
+                    {t('inspector.duplicate')}
                 </Button>
                 <Button variant="outline" size="sm" disabled={selectedNode.parentId === null} onClick={onDelete}>
                     <Trash2 size={15}/>

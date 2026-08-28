@@ -3,9 +3,10 @@ import {connectionPath, SitemapCard} from '@/components/sitemap/SitemapCard.tsx'
 import {Button} from '@/components/ui/button.tsx';
 import {Checkbox} from '@/components/ui/checkbox.tsx';
 import {Input} from '@/components/ui/input.tsx';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
+import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table.tsx';
 import {captureCanvasAsPdfBase64} from '@/lib/canvasExport.ts';
+import {useTranslation} from '@/lib/i18n/context.tsx';
 import {
     layoutNodes,
     PAGE_STATUSES,
@@ -37,7 +38,6 @@ import {
     useMemo,
     useRef,
     useState,
-    type WheelEvent,
     type PointerEvent as ReactPointerEvent,
 } from 'react';
 
@@ -109,11 +109,12 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     onUpdateNodes,
     onExportPdf,
 }: WorkspaceProps, ref) {
+    const {locale, t} = useTranslation();
     const [view, setView] = useState<'canvas' | 'table'>('canvas');
-    const [statusFilter, setStatusFilter] = useState('Alle');
-    const [typeFilter, setTypeFilter] = useState('Alle');
-    const [ownerFilter, setOwnerFilter] = useState('Alle');
-    const [importanceFilter, setImportanceFilter] = useState('Alle');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [ownerFilter, setOwnerFilter] = useState('all');
+    const [importanceFilter, setImportanceFilter] = useState('all');
     const [showIssues, setShowIssues] = useState(false);
     const [issuesHeight, setIssuesHeight] = useState(() => Number(localStorage.getItem('issues-panel-height')) || 220);
     const [selectedRows, setSelectedRows] = useState<string[]>([]);
@@ -143,17 +144,17 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 .toLowerCase()
                 .includes(search.toLowerCase())
                 && (view !== 'table' || (
-                    (statusFilter === 'Alle' || node.status === statusFilter)
-                    && (typeFilter === 'Alle' || node.pageType === typeFilter)
-                    && (ownerFilter === 'Alle' || node.owner === ownerFilter)
-                    && (importanceFilter === 'Alle' || node.seoImportance === importanceFilter)
+                    (statusFilter === 'all' || node.status === statusFilter)
+                    && (typeFilter === 'all' || node.pageType === typeFilter)
+                    && (ownerFilter === 'all' || node.owner === ownerFilter)
+                    && (importanceFilter === 'all' || node.seoImportance === importanceFilter)
                 )))
             .map((node) => node.id),
     ), [document.nodes, importanceFilter, ownerFilter, search, statusFilter, typeFilter, view]);
     const visibleNodes = useMemo(() => document.nodes
         .filter((node) => visibleNodeIds.has(node.id))
-        .sort((a, b) => String(a[sort.key] ?? '').localeCompare(String(b[sort.key] ?? ''), 'de') * sort.direction),
-    [document.nodes, sort, visibleNodeIds]);
+        .sort((a, b) => String(a[sort.key] ?? '').localeCompare(String(b[sort.key] ?? ''), locale) * sort.direction),
+    [document.nodes, locale, sort, visibleNodeIds]);
     const owners = useMemo(() => [...new Set(document.nodes.map((node) => node.owner).filter(Boolean))].sort(), [document.nodes]);
 
     useEffect(() => {
@@ -204,20 +205,28 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
         direction: current.key === key ? (current.direction === 1 ? -1 : 1) : 1,
     }));
     const clearFilters = () => {
-        setStatusFilter('Alle');
-        setTypeFilter('Alle');
-        setOwnerFilter('Alle');
-        setImportanceFilter('Alle');
+        setStatusFilter('all');
+        setTypeFilter('all');
+        setOwnerFilter('all');
+        setImportanceFilter('all');
     };
-    const activeFilterCount = [statusFilter, typeFilter, ownerFilter, importanceFilter].filter((value) => value !== 'Alle').length;
+    const activeFilterCount = [statusFilter, typeFilter, ownerFilter, importanceFilter].filter((value) => value !== 'all').length;
 
-    const zoomByWheel = (event: WheelEvent<HTMLDivElement>) => {
-        if (!event.metaKey && !event.ctrlKey) return;
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
 
-        event.preventDefault();
-        const nextZoom = zoom + (event.deltaY < 0 ? 0.1 : -0.1);
-        onZoomChange(Math.max(0.55, Math.min(1.25, nextZoom)));
-    };
+        const handleWheel = (event: globalThis.WheelEvent) => {
+            if (!event.metaKey && !event.ctrlKey) return;
+
+            event.preventDefault();
+            const nextZoom = zoom + (event.deltaY < 0 ? 0.1 : -0.1);
+            onZoomChange(Math.max(0.1, Math.min(2, nextZoom)));
+        };
+
+        canvas.addEventListener('wheel', handleWheel, {passive: false});
+        return () => canvas.removeEventListener('wheel', handleWheel);
+    }, [zoom, onZoomChange]);
 
     const startIssuesResize = (event: ReactPointerEvent<HTMLDivElement>) => {
         event.preventDefault();
@@ -247,54 +256,62 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                     <Input
                         className="h-auto w-full border-0 bg-transparent p-0 text-xs text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
                         value={search}
-                        placeholder="Seiten durchsuchen …"
+                        placeholder={t('workspace.searchPlaceholder')}
                         onChange={(event) => onSearchChange(event.target.value)}
                     />
                 </div>
 
                 <div className="flex items-center gap-2.5 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:text-xs">
-                    <span className="text-[10px] text-muted-foreground">{document.nodes.length} Seiten</span>
+                    <span className="text-[10px] text-muted-foreground">{t('workspace.pageCount', {count: document.nodes.length})}</span>
                     {view === 'table' && (
                         <>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach Status filtern">
+                                <SelectTrigger className={toolbarSelectClass} aria-label={t('workspace.filterByStatus')}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Alle">Status</SelectItem>
-                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                                    <SelectGroup>
+                                    <SelectItem value="all">{t('workspace.filter.statusLabel')}</SelectItem>
+                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <Select value={typeFilter} onValueChange={setTypeFilter}>
-                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach Seitentyp filtern">
+                                <SelectTrigger className={toolbarSelectClass} aria-label={t('workspace.filterByType')}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Alle">Typ</SelectItem>
-                                    {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                    <SelectGroup>
+                                    <SelectItem value="all">{t('workspace.filter.typeLabel')}</SelectItem>
+                                    {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{t(`pageType.${type}`)}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <Select value={ownerFilter} onValueChange={setOwnerFilter}>
-                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach Verantwortlichem filtern">
+                                <SelectTrigger className={toolbarSelectClass} aria-label={t('workspace.filterByOwner')}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Alle">Owner</SelectItem>
+                                    <SelectGroup>
+                                    <SelectItem value="all">{t('workspace.filter.ownerLabel')}</SelectItem>
                                     {owners.map((owner) => <SelectItem key={owner} value={owner}>{owner}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <Select value={importanceFilter} onValueChange={setImportanceFilter}>
-                                <SelectTrigger className={toolbarSelectClass} aria-label="Nach SEO-Relevanz filtern">
+                                <SelectTrigger className={toolbarSelectClass} aria-label={t('workspace.filterBySeo')}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Alle">SEO</SelectItem>
-                                    {SEO_IMPORTANCE_LEVELS.map((level) => <SelectItem key={level} value={level}>{level}</SelectItem>)}
+                                    <SelectGroup>
+                                    <SelectItem value="all">{t('workspace.filter.seoLabel')}</SelectItem>
+                                    {SEO_IMPORTANCE_LEVELS.map((level) => <SelectItem key={level} value={level}>{t(`seoImportance.${level}`)}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             {activeFilterCount > 0 && (
                                 <Button variant="ghost" className="border border-primary/30 bg-accent px-2 text-primary" onClick={clearFilters}>
-                                    {activeFilterCount} Filter ×
+                                    {t('workspace.clearFilters', {count: activeFilterCount})}
                                 </Button>
                             )}
                         </>
@@ -303,26 +320,26 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                         variant="ghost"
                         className={cn('gap-1 border border-border bg-background px-2 text-muted-foreground', issues.length > 0 && 'border-amber-500/40 bg-amber-500/10 text-amber-600')}
                         onClick={() => setShowIssues(!showIssues)}
-                        title="Qualitätsprüfung"
+                        title={t('workspace.qualityCheck')}
                     >
                         <AlertTriangle size={14}/>{issues.length}
                     </Button>
-                    <div className={layoutControlsClass} aria-label="Ansicht">
-                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'canvas' && 'bg-accent text-primary')} aria-label="Canvas" onClick={() => setView('canvas')}>
+                    <div className={layoutControlsClass} aria-label={t('workspace.viewLabel')}>
+                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'canvas' && 'bg-accent text-primary')} aria-label={t('workspace.canvasView')} onClick={() => setView('canvas')}>
                             <Network size={15}/>
                         </Button>
-                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'table' && 'bg-accent text-primary')} aria-label="Tabelle" onClick={() => setView('table')}>
+                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'table' && 'bg-accent text-primary')} aria-label={t('workspace.tableView')} onClick={() => setView('table')}>
                             <Table2 size={15}/>
                         </Button>
                     </div>
                     {view === 'canvas' && (
                         <>
-                            <div className={layoutControlsClass} aria-label="Darstellung">
+                            <div className={layoutControlsClass} aria-label={t('workspace.layoutLabel')}>
                                 <Button
                                     variant="ghost"
                                     className={cn(layoutButtonClass, layoutDirection === 'horizontal' && 'bg-accent text-primary')}
-                                    aria-label="Horizontal darstellen"
-                                    title="Horizontal darstellen"
+                                    aria-label={t('workspace.layoutHorizontal')}
+                                    title={t('workspace.layoutHorizontal')}
                                     onClick={() => onLayoutDirectionChange('horizontal')}
                                 >
                                     <Rows3 size={15}/>
@@ -330,8 +347,8 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 <Button
                                     variant="ghost"
                                     className={cn(layoutButtonClass, layoutDirection === 'vertical' && 'bg-accent text-primary')}
-                                    aria-label="Vertikal darstellen"
-                                    title="Vertikal darstellen"
+                                    aria-label={t('workspace.layoutVertical')}
+                                    title={t('workspace.layoutVertical')}
                                     onClick={() => onLayoutDirectionChange('vertical')}
                                 >
                                     <Columns3 size={15}/>
@@ -343,27 +360,27 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 onClick={() => onAddChild()}
                             >
                                 <Plus size={15}/>
-                                Unterseite
+                                {t('workspace.addPage')}
                             </Button>
-                            <div className="flex h-8 items-center overflow-hidden rounded-md border border-border bg-[hsl(var(--panel))] [&_button]:grid [&_button]:h-full [&_button]:w-8 [&_button]:place-items-center [&_button]:rounded-none [&_button]:border-0 [&_button:hover]:bg-muted">
+                            <div className="flex h-8 items-stretch overflow-hidden rounded-md border border-border bg-[hsl(var(--panel))] [&_button]:grid [&_button]:h-full [&_button]:w-8 [&_button]:place-items-center [&_button]:rounded-none [&_button]:border-0 [&_button:hover]:bg-muted">
                                 <Button
                                     variant="ghost"
-                                    aria-label="Verkleinern"
-                                    onClick={() => onZoomChange(Math.max(0.55, zoom - 0.1))}
+                                    aria-label={t('workspace.zoomOut')}
+                                    onClick={() => onZoomChange(Math.max(0.1, zoom - 0.1))}
                                 >
                                     <Minus size={14}/>
                                 </Button>
                                 <span
-                                    className="w-10 select-none text-center text-[9px] text-muted-foreground"
-                                    title="Doppelklick: Zoom auf 100 % zurücksetzen"
+                                    className="flex w-11 select-none items-center justify-center border-x border-border font-mono text-[10px] leading-none tabular-nums text-muted-foreground"
+                                    title={t('workspace.zoomResetTitle')}
                                     onDoubleClick={() => onZoomChange(1)}
                                 >
                                     {Math.round(zoom * 100)}%
                                 </span>
                                 <Button
                                     variant="ghost"
-                                    aria-label="Vergrößern"
-                                    onClick={() => onZoomChange(Math.min(1.25, zoom + 0.1))}
+                                    aria-label={t('workspace.zoomIn')}
+                                    onClick={() => onZoomChange(Math.min(2, zoom + 0.1))}
                                 >
                                     <Plus size={14}/>
                                 </Button>
@@ -377,7 +394,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 <div className="overflow-auto p-4">
                     {selectedRows.length > 0 && (
                         <div className="sticky left-0 top-0 z-10 mb-2 flex h-10 items-center gap-3 rounded-lg border border-primary/25 bg-accent px-3 text-[10px] [&_button]:h-7 [&_button]:rounded-md [&_button]:border [&_button]:border-border [&_button]:bg-background [&_button]:px-2 [&_button]:text-[9px]">
-                            <strong className="text-primary">{selectedRows.length} ausgewählt</strong>
+                            <strong className="text-primary">{t('workspace.rowsSelected', {count: selectedRows.length})}</strong>
                             <Select
                                 key={bulkActionKey}
                                 onValueChange={(value) => {
@@ -386,10 +403,12 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 }}
                             >
                                 <SelectTrigger className="w-auto">
-                                    <SelectValue placeholder="Status setzen …"/>
+                                    <SelectValue placeholder={t('workspace.setStatusPlaceholder')}/>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                                    <SelectGroup>
+                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
+                                    </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <Button
@@ -400,9 +419,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 })}
                             >
                                 <Trash2 size={12}/>
-                                Löschen
+                                {t('common.delete')}
                             </Button>
-                            <Button variant="ghost" onClick={() => setSelectedRows([])}>Auswahl aufheben</Button>
+                            <Button variant="ghost" onClick={() => setSelectedRows([])}>{t('workspace.clearSelection')}</Button>
                         </div>
                     )}
                     <Table className="border-separate border-spacing-0 overflow-hidden rounded-xl border border-border bg-card text-left text-[10px]">
@@ -410,17 +429,17 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                             <TableRow className="hover:bg-transparent">
                                 <TableHead className={`${tableHeaderClass} w-10 min-w-10 cursor-default resize-none`}>
                                     <Checkbox
-                                        aria-label="Alle sichtbaren Seiten auswählen"
+                                        aria-label={t('workspace.selectAllVisible')}
                                         checked={visibleNodes.length > 0 && visibleNodes.every((node) => selectedRows.includes(node.id))}
                                         onCheckedChange={(checked) => setSelectedRows(checked === true ? visibleNodes.map((node) => node.id) : [])}
                                     />
                                 </TableHead>
-                                {([['title', 'Seite'], ['slug', 'URL'], ['pageType', 'Typ'], ['status', 'Status'], ['owner', 'Owner']] as [keyof SitemapNode, string][]).map(([key, label]) => (
+                                {([['title', t('workspace.col.page')], ['slug', t('workspace.col.url')], ['pageType', t('workspace.col.type')], ['status', t('workspace.col.status')], ['owner', t('workspace.col.owner')]] as [keyof SitemapNode, string][]).map(([key, label]) => (
                                     <TableHead className={tableHeaderClass} key={key} onClick={() => toggleSort(key)}>
                                         {label}{sort.key === key ? (sort.direction === 1 ? ' ↑' : ' ↓') : ''}
                                     </TableHead>
                                 ))}
-                                <TableHead className={tableHeaderClass}>Prüfung</TableHead>
+                                <TableHead className={tableHeaderClass}>{t('workspace.col.check')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>{visibleNodes.map((node) => (
@@ -439,7 +458,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     <Input
                                         className={tableFieldClass}
                                         value={node.title}
-                                        aria-label={`Titel von ${node.title}`}
+                                        aria-label={t('workspace.titleOfAria', {title: node.title})}
                                         onClick={(event) => event.stopPropagation()}
                                         onChange={(event) => onUpdateNode(node.id, 'title', event.target.value)}
                                     />
@@ -448,7 +467,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     <Input
                                         className={tableFieldClass}
                                         value={node.slug}
-                                        aria-label={`URL von ${node.title}`}
+                                        aria-label={t('workspace.urlOfAria', {title: node.title})}
                                         onClick={(event) => event.stopPropagation()}
                                         onChange={(event) => onUpdateNode(node.id, 'slug', event.target.value)}
                                     />
@@ -459,7 +478,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                             <SelectValue/>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                                            <SelectGroup>
+                                            {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{t(`pageType.${type}`)}</SelectItem>)}
+                                            </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </TableCell>
@@ -469,7 +490,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                             <SelectValue/>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{status}</SelectItem>)}
+                                            <SelectGroup>
+                                            {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
+                                            </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </TableCell>
@@ -477,7 +500,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     <Input
                                         className={tableFieldClass}
                                         value={node.owner}
-                                        aria-label={`Owner von ${node.title}`}
+                                        aria-label={t('workspace.ownerOfAria', {title: node.title})}
                                         onClick={(event) => event.stopPropagation()}
                                         onChange={(event) => onUpdateNode(node.id, 'owner', event.target.value)}
                                     />
@@ -490,64 +513,65 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
             ) : <div className="relative min-h-0">
                 <div
                     ref={canvasRef}
-                    className="absolute inset-0 overflow-auto bg-[hsl(var(--canvas))] [background-image:radial-gradient(hsl(var(--line)/.6)_0.7px,transparent_0.7px)] [background-size:18px_18px]"
-                    onWheel={zoomByWheel}
+                    className="blueprint-canvas absolute inset-0 overflow-auto"
                     onScroll={syncViewport}
                     onClick={() => onSelectNode('')}
                 >
-                    <div
-                        ref={canvasContentRef}
-                        className="relative origin-top-left transition-transform"
-                        style={{
-                            width: layout.width,
-                            height: layout.height,
-                            transform: `scale(${zoom})`,
-                        }}
-                    >
-                        <svg
-                            className="pointer-events-none absolute inset-0 overflow-visible [&_path]:fill-none [&_path]:stroke-[hsl(var(--line))] [&_path]:stroke-[1.5]"
-                            width={layout.width}
-                            height={layout.height}
-                            aria-hidden="true"
+                    <div style={{width: layout.width * zoom, height: layout.height * zoom}}>
+                        <div
+                            ref={canvasContentRef}
+                            className="relative origin-top-left transition-transform"
+                            style={{
+                                width: layout.width,
+                                height: layout.height,
+                                transform: `scale(${zoom})`,
+                            }}
                         >
-                            {document.nodes.map((node) => {
-                                const path = connectionPath(
-                                    node,
-                                    layout,
-                                    layoutDirection,
-                                );
-                                return path
-                                    ? <path key={node.id} d={path}/>
-                                    : null;
-                            })}
-                        </svg>
+                            <svg
+                                className="pointer-events-none absolute inset-0 overflow-visible [&_path]:fill-none [&_path]:stroke-[hsl(var(--line))] [&_path]:stroke-[1.5]"
+                                width={layout.width}
+                                height={layout.height}
+                                aria-hidden="true"
+                            >
+                                {document.nodes.map((node) => {
+                                    const path = connectionPath(
+                                        node,
+                                        layout,
+                                        layoutDirection,
+                                    );
+                                    return path
+                                        ? <path key={node.id} d={path}/>
+                                        : null;
+                                })}
+                            </svg>
 
-                        {document.nodes.map((node) => (
-                            <SitemapCard
-                                key={node.id}
-                                node={node}
-                                document={document}
-                                layout={layout}
-                                layoutDirection={layoutDirection}
-                                selected={selectedId === node.id}
-                                draggedId={draggedId}
-                                dropTarget={dropTargetId === node.id}
-                                dimmed={Boolean(
-                                    search && !visibleNodeIds.has(node.id),
-                                )}
-                                onSelect={() => onSelectNode(node.id)}
-                                onAddChild={() => onAddChild(node.id)}
-                                onDuplicate={() => onDuplicateNode(node.id)}
-                                onDelete={() => onDeleteNode(node.id)}
-                                onMoveUp={() => onMoveNodeSibling(node.id, -1)}
-                                onMoveDown={() => onMoveNodeSibling(node.id, 1)}
-                                onMoveUpLevel={() => onMoveNodeUpLevel(node.id)}
-                                onDraggedNodeChange={onDraggedNodeChange}
-                                onDropTargetChange={onDropTargetChange}
-                                canMoveTo={canMoveTo}
-                                onDropNode={onDropNode}
-                            />
-                        ))}
+                            {document.nodes.map((node) => (
+                                <SitemapCard
+                                    key={node.id}
+                                    node={node}
+                                    document={document}
+                                    layout={layout}
+                                    layoutDirection={layoutDirection}
+                                    selected={selectedId === node.id}
+                                    draggedId={draggedId}
+                                    dropTarget={dropTargetId === node.id}
+                                    dimmed={Boolean(
+                                        search && !visibleNodeIds.has(node.id),
+                                    )}
+                                    onSelect={() => onSelectNode(node.id)}
+                                    onAddChild={() => onAddChild(node.id)}
+                                    onDuplicate={() => onDuplicateNode(node.id)}
+                                    onDelete={() => onDeleteNode(node.id)}
+                                    onMoveUp={() => onMoveNodeSibling(node.id, -1)}
+                                    onMoveDown={() => onMoveNodeSibling(node.id, 1)}
+                                    onMoveUpLevel={() => onMoveNodeUpLevel(node.id)}
+                                    onDraggedNodeChange={onDraggedNodeChange}
+                                    onDropTargetChange={onDropTargetChange}
+                                    canMoveTo={canMoveTo}
+                                    onDropNode={onDropNode}
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
 
@@ -564,26 +588,26 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
             </div>}
 
             {showIssues && (
-                <section className="relative flex min-h-0 flex-col border-t border-border bg-[hsl(var(--panel))] shadow-[0_-3px_12px_rgb(7_20_46_/_0.05)]" aria-label="Qualitätsprüfung">
+                <section className="relative flex min-h-0 flex-col border-t border-border bg-[hsl(var(--panel))] shadow-[0_-3px_12px_rgb(7_20_46_/_0.05)]" aria-label={t('workspace.qualityCheck')}>
                     <div
                         className="absolute inset-x-0 -top-1 z-10 h-2 cursor-ns-resize touch-none after:absolute after:inset-x-0 after:top-0.75 after:h-px after:bg-transparent hover:after:bg-primary active:after:bg-primary"
                         role="separator"
-                        aria-label="Höhe der Qualitätsprüfung ändern"
+                        aria-label={t('workspace.issuesPanelResizeAria')}
                         aria-orientation="horizontal"
                         onPointerDown={startIssuesResize}
                     />
                     <header className="flex h-9 shrink-0 items-center justify-between border-b border-border bg-muted/50 px-3">
                         <div className="flex items-center gap-2 text-primary">
                             <AlertTriangle size={14}/>
-                            <strong className="text-[10px] text-foreground">Qualitätsprüfung</strong>
-                            <span className="text-[9px] text-muted-foreground">{issues.length} Hinweise</span>
+                            <strong className="text-[10px] text-foreground">{t('workspace.qualityCheck')}</strong>
+                            <span className="text-[9px] text-muted-foreground">{t('workspace.issuesCount', {count: issues.length})}</span>
                         </div>
-                        <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" aria-label="Qualitätsprüfung schließen" onClick={() => setShowIssues(false)}>
+                        <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" aria-label={t('workspace.closeIssuesAria')} onClick={() => setShowIssues(false)}>
                             <X size={14}/>
                         </Button>
                     </header>
                     <div className="min-h-0 overflow-auto">
-                        {issues.length === 0 ? <p className="m-0 px-4 py-5 text-[10px] text-muted-foreground">Keine Probleme gefunden.</p> : issues.map((issue, index) => {
+                        {issues.length === 0 ? <p className="m-0 px-4 py-5 text-[10px] text-muted-foreground">{t('workspace.noIssuesFound')}</p> : issues.map((issue, index) => {
                             const node = document.nodes.find((item) => item.id === issue.nodeId);
                             return (
                                 <Button
@@ -594,8 +618,8 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 >
                                     <i className={cn('size-1.5 rounded-full bg-amber-500', issue.level === 'error' && 'bg-destructive')}/>
                                     <b className="truncate text-foreground">{node?.title}</b>
-                                    <span>{issue.message}</span>
-                                    <em className="text-right text-[8px] not-italic uppercase tracking-wide">{issue.level === 'error' ? 'Fehler' : 'Warnung'}</em>
+                                    <span>{t(issue.messageKey)}</span>
+                                    <em className="text-right text-[8px] not-italic uppercase tracking-wide">{issue.level === 'error' ? t('workspace.levelError') : t('workspace.levelWarning')}</em>
                                 </Button>
                             );
                         })}
@@ -604,10 +628,10 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
             )}
 
             <div className="flex items-center gap-2 border-t border-border bg-[hsl(var(--panel))] px-3 text-[9px] text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-[#16e2be]"/>
+                <span className="size-1.5 rounded-full bg-[hsl(var(--success))] shadow-[0_0_0_3px_hsl(var(--success)/.12)]"/>
                 {message}
                 <span className="ml-auto max-w-[45%] truncate">
-                    {currentPath || 'Noch keine .smap-Datei'}
+                    {currentPath || t('workspace.noFileYet')}
                 </span>
             </div>
         </main>
