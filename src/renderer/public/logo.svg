@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sitemap icon">
-  <defs>
-    <linearGradient id="bg" x1="68" y1="50" x2="444" y2="462" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FF8066"/>
-      <stop offset=".56" stop-color="#D94F38"/>
-      <stop offset="1" stop-color="#9E312D"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <g fill="none" stroke="#FFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="20">
-    <path d="M256 180v72M136 294v-16c0-14 11-26 26-26h188c14 0 26 12 26 26v16M256 252v42"/>
-  </g>
-  <g fill="#FFF">
-    <rect x="200" y="92" width="112" height="88" rx="25"/>
-    <rect x="80" y="294" width="112" height="88" rx="25"/>
-    <rect x="200" y="294" width="112" height="88" rx="25"/>
-    <rect x="320" y="294" width="112" height="88" rx="25"/>
-  </g>
+    <defs>
+        <linearGradient id="bg" x1="68" y1="50" x2="444" y2="462" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#FF8066"/>
+            <stop offset=".56" stop-color="#D94F38"/>
+            <stop offset="1" stop-color="#9E312D"/>
+        </linearGradient>
+    </defs>
+    <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+    <g fill="none" stroke="#FFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="20">
+        <path d="M256 180v72M136 294v-16c0-14 11-26 26-26h188c14 0 26 12 26 26v16M256 252v42"/>
+    </g>
+    <g fill="#FFF">
+        <rect x="200" y="92" width="112" height="88" rx="25"/>
+        <rect x="80" y="294" width="112" height="88" rx="25"/>
+        <rect x="200" y="294" width="112" height="88" rx="25"/>
+        <rect x="320" y="294" width="112" height="88" rx="25"/>
+    </g>
 </svg>

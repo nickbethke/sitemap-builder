@@ -1,6 +1,4 @@
-type Dict = Record<string, string>;
-
-export const de: Dict = {
+export const de = {
     // common
     'common.cancel': 'Abbrechen',
     'common.confirm': 'Bestätigen',
@@ -42,8 +40,10 @@ export const de: Dict = {
     'validation.parentMissing': 'Übergeordnete Seite fehlt',
     'validation.seoTitleMissing': 'SEO-Titel fehlt',
     'validation.seoTitleTooLong': 'SEO-Titel ist länger als 60 Zeichen',
+    'validation.seoTitleDuplicate': 'SEO-Titel ist doppelt',
     'validation.seoDescriptionMissing': 'SEO-Beschreibung fehlt',
     'validation.seoDescriptionTooLong': 'SEO-Beschreibung ist länger als 160 Zeichen',
+    'validation.hierarchyTooDeep': 'Seite liegt mehr als 3 Ebenen tief',
 
     // project templates
     'template.empty.title': 'Leere Sitemap',
@@ -223,6 +223,8 @@ export const de: Dict = {
     'workspace.filter.seoLabel': 'SEO',
     'workspace.clearFilters': '{{count}} Filter ×',
     'workspace.qualityCheck': 'Qualitätsprüfung',
+    'workspace.presentationMode': 'Präsentieren',
+    'workspace.exitPresentationMode': 'Präsentation beenden',
     'workspace.viewLabel': 'Ansicht',
     'workspace.canvasView': 'Canvas',
     'workspace.tableView': 'Tabelle',
@@ -295,4 +297,6 @@ export const de: Dict = {
     'cardMenu.moveDown': 'Nach unten sortieren',
     'cardMenu.moveUpLevel': 'Eine Ebene hoch',
     'cardMenu.delete': 'Löschen',
-};
+} as const;
+
+export type TranslationKey = keyof typeof de;

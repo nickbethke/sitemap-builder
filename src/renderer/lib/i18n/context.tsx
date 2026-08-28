@@ -1,4 +1,4 @@
-import {DEFAULT_LOCALE, type Locale, translations} from '@/lib/i18n/translations.ts';
+import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from '@/lib/i18n/translations.ts';
 import {createContext, type ReactNode, useContext, useEffect, useMemo, useState} from 'react';
 
 type TranslateVars = Record<string, string | number>;
@@ -6,7 +6,7 @@ type TranslateVars = Record<string, string | number>;
 type LanguageContextValue = {
     locale: Locale;
     setLocale: (locale: Locale) => void;
-    t: (key: string, vars?: TranslateVars) => string;
+    t: (key: TranslationKey, vars?: TranslateVars) => string;
 };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);

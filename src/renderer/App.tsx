@@ -24,7 +24,18 @@ function SitemapBuilder() {
     const sitemap = useSitemapBuilder();
     const [newSitemapOpen, setNewSitemapOpen] = useState(false);
     const [importWebsiteOpen, setImportWebsiteOpen] = useState(false);
+    const [presentationMode, setPresentationMode] = useState(false);
     const workspaceRef = useRef<WorkspaceHandle>(null);
+
+    const togglePresentationMode = (enabled: boolean) => setPresentationMode(enabled);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && presentationMode) togglePresentationMode(false);
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [presentationMode]);
 
     useEffect(() => {
         const subscription = ipc.menuAction.WatchMenuActions({}).subscribe({
@@ -49,8 +60,10 @@ function SitemapBuilder() {
     }, [sitemap]);
 
     return (
-        <div className="grid h-screen grid-cols-[minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[minmax(500px,1fr)_285px]">
-            <Topbar
+        <div className={presentationMode
+            ? 'grid h-screen grid-cols-1 grid-rows-1 bg-background'
+            : 'grid h-screen grid-cols-[minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[minmax(500px,1fr)_285px]'}>
+            {!presentationMode && <Topbar
                 projectName={sitemap.document.project.name}
                 dirty={sitemap.dirty}
                 theme={sitemap.theme}
@@ -66,7 +79,7 @@ function SitemapBuilder() {
                 onRedo={sitemap.redo}
                 canUndo={sitemap.canUndo}
                 canRedo={sitemap.canRedo}
-            />
+            />}
 
             <Workspace
                 ref={workspaceRef}
@@ -96,9 +109,11 @@ function SitemapBuilder() {
                 onUpdateNode={sitemap.updateNodeById}
                 onUpdateNodes={sitemap.updateNodes}
                 onExportPdf={sitemap.exportPdf}
+                presentationMode={presentationMode}
+                onPresentationModeChange={togglePresentationMode}
             />
 
-            <Inspector
+            {!presentationMode && <Inspector
                 selectedNode={sitemap.selectedNode}
                 project={sitemap.document.project}
                 onProjectChange={sitemap.updateProject}
@@ -109,7 +124,7 @@ function SitemapBuilder() {
                 onMoveDown={() => sitemap.moveSelectedSibling(1)}
                 onDuplicate={() => sitemap.duplicateNode()}
                 onDelete={() => sitemap.deleteNode()}
-            />
+            />}
 
             {newSitemapOpen && (
                 <NewSitemapDialog

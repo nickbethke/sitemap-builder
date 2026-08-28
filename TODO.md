@@ -5,12 +5,12 @@
 - [ ] **SEO-Validierung**
   - [x] Doppelte Slugs erkennen
   - [x] Fehlende SEO-Titel erkennen
-  - [ ] Doppelte SEO-Titel erkennen
+  - [x] Doppelte SEO-Titel erkennen
   - [x] Fehlende Meta-Descriptions erkennen
   - [x] Längen von SEO-Titel und Description prüfen
   - [x] `noindex`-Seiten sichtbar kennzeichnen
   - [x] Waisen und ungültige Eltern-Kind-Beziehungen prüfen
-  - [ ] Zu tiefe Ebenen prüfen
+  - [x] Zu tiefe Ebenen prüfen
 
 - [ ] **Export-Funktionen**
   - [x] XML-Sitemap exportieren
@@ -50,7 +50,7 @@
   - [x] Mehrfachauswahl und Bulk-Aktionen
   - [ ] Baumansicht als Alternative zur Canvas
   - [ ] Kanban-Ansicht nach Status
-  - [ ] Präsentationsmodus für Kundentermine
+  - [x] Präsentationsmodus für Kundentermine
   - [x] Filter nach Status
   - [x] Filter nach Owner, Seitentyp und SEO-Priorität
   - [x] Aktive Filter anzeigen und gesammelt zurücksetzen

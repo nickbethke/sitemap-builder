@@ -8,6 +8,7 @@ import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/c
 import {captureCanvasAsPdfBase64} from '@/lib/canvasExport.ts';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {
+    CARD_WIDTH,
     layoutNodes,
     PAGE_STATUSES,
     PAGE_TYPES,
@@ -29,10 +30,12 @@ import {
     Network,
     Trash2,
     X,
+    MonitorPlay,
 } from 'lucide-react';
 import {
     type DragEvent,
     forwardRef,
+    useCallback,
     useEffect,
     useImperativeHandle,
     useMemo,
@@ -68,6 +71,8 @@ type WorkspaceProps = {
     onUpdateNode: <K extends keyof SitemapNode>(nodeId: string, key: K, value: SitemapNode[K]) => void;
     onUpdateNodes: <K extends keyof SitemapNode>(nodeIds: string[], key: K, value: SitemapNode[K]) => void;
     onExportPdf: (base64: string) => void;
+    presentationMode: boolean;
+    onPresentationModeChange: (enabled: boolean) => void;
 };
 
 export type WorkspaceHandle = {
@@ -82,33 +87,35 @@ const tableHeaderClass = 'sticky top-0 min-w-24 cursor-pointer overflow-hidden b
 const tableCellClass = 'border-b border-border px-2 py-1.5 text-muted-foreground';
 
 export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Workspace({
-    document,
-    selectedId,
-    draggedId,
-    dropTargetId,
-    search,
-    zoom,
-    layoutDirection,
-    message,
-    currentPath,
-    onSearchChange,
-    onZoomChange,
-    onLayoutDirectionChange,
-    onAddChild,
-    onDuplicateNode,
-    onDeleteNode,
-    onDeleteNodes,
-    onMoveNodeSibling,
-    onMoveNodeUpLevel,
-    onSelectNode,
-    onDraggedNodeChange,
-    onDropTargetChange,
-    canMoveTo,
-    onDropNode,
-    onUpdateNode,
-    onUpdateNodes,
-    onExportPdf,
-}: WorkspaceProps, ref) {
+                                                                                            document,
+                                                                                            selectedId,
+                                                                                            draggedId,
+                                                                                            dropTargetId,
+                                                                                            search,
+                                                                                            zoom,
+                                                                                            layoutDirection,
+                                                                                            message,
+                                                                                            currentPath,
+                                                                                            onSearchChange,
+                                                                                            onZoomChange,
+                                                                                            onLayoutDirectionChange,
+                                                                                            onAddChild,
+                                                                                            onDuplicateNode,
+                                                                                            onDeleteNode,
+                                                                                            onDeleteNodes,
+                                                                                            onMoveNodeSibling,
+                                                                                            onMoveNodeUpLevel,
+                                                                                            onSelectNode,
+                                                                                            onDraggedNodeChange,
+                                                                                            onDropTargetChange,
+                                                                                            canMoveTo,
+                                                                                            onDropNode,
+                                                                                            onUpdateNode,
+                                                                                            onUpdateNodes,
+                                                                                            onExportPdf,
+                                                                                            presentationMode,
+                                                                                            onPresentationModeChange,
+                                                                                        }: WorkspaceProps, ref) {
     const {locale, t} = useTranslation();
     const [view, setView] = useState<'canvas' | 'table'>('canvas');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -119,14 +126,34 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     const [issuesHeight, setIssuesHeight] = useState(() => Number(localStorage.getItem('issues-panel-height')) || 220);
     const [selectedRows, setSelectedRows] = useState<string[]>([]);
     const [bulkActionKey, setBulkActionKey] = useState(0);
-    const [sort, setSort] = useState<{key: keyof SitemapNode; direction: 1 | -1}>({key: 'title', direction: 1});
+    const [sort, setSort] = useState<{ key: keyof SitemapNode; direction: 1 | -1 }>({key: 'title', direction: 1});
     const canvasRef = useRef<HTMLDivElement>(null);
     const canvasContentRef = useRef<HTMLDivElement>(null);
-    const [viewport, setViewport] = useState<MiniMapViewport>({scrollLeft: 0, scrollTop: 0, clientWidth: 0, clientHeight: 0});
+    const [viewport, setViewport] = useState<MiniMapViewport>({
+        scrollLeft: 0,
+        scrollTop: 0,
+        clientWidth: 0,
+        clientHeight: 0
+    });
+    const [cardHeights, setCardHeights] = useState<Record<string, number>>({});
+    useEffect(() => {
+        if (presentationMode) setView('canvas');
+    }, [presentationMode]);
+    const onCardSizeChange = useCallback((nodeId: string, height: number) => {
+        const roundedHeight = Math.ceil(height);
+        setCardHeights((current) => current[nodeId] === roundedHeight ? current : {
+            ...current,
+            [nodeId]: roundedHeight
+        });
+    }, []);
     const issues = useMemo(() => validateDocument(document), [document]);
     const layout = useMemo(
-        () => layoutNodes(document.nodes, layoutDirection),
-        [document.nodes, layoutDirection],
+        () => layoutNodes(
+            document.nodes,
+            layoutDirection,
+            Object.fromEntries(Object.entries(cardHeights).map(([id, height]) => [id, {width: CARD_WIDTH, height}])),
+        ),
+        [cardHeights, document.nodes, layoutDirection],
     );
 
     useImperativeHandle(ref, () => ({
@@ -141,8 +168,8 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     const visibleNodeIds = useMemo(() => new Set(
         document.nodes
             .filter((node) => `${node.title} ${node.slug} ${node.description} ${node.owner} ${node.notes}`
-                .toLowerCase()
-                .includes(search.toLowerCase())
+                    .toLowerCase()
+                    .includes(search.toLowerCase())
                 && (view !== 'table' || (
                     (statusFilter === 'all' || node.status === statusFilter)
                     && (typeFilter === 'all' || node.pageType === typeFilter)
@@ -152,9 +179,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
             .map((node) => node.id),
     ), [document.nodes, importanceFilter, ownerFilter, search, statusFilter, typeFilter, view]);
     const visibleNodes = useMemo(() => document.nodes
-        .filter((node) => visibleNodeIds.has(node.id))
-        .sort((a, b) => String(a[sort.key] ?? '').localeCompare(String(b[sort.key] ?? ''), locale) * sort.direction),
-    [document.nodes, locale, sort, visibleNodeIds]);
+            .filter((node) => visibleNodeIds.has(node.id))
+            .sort((a, b) => String(a[sort.key] ?? '').localeCompare(String(b[sort.key] ?? ''), locale) * sort.direction),
+        [document.nodes, locale, sort, visibleNodeIds]);
     const owners = useMemo(() => [...new Set(document.nodes.map((node) => node.owner).filter(Boolean))].sort(), [document.nodes]);
 
     useEffect(() => {
@@ -247,11 +274,16 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
 
     return (
         <main
-            className="relative col-start-1 grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)_29px] bg-[hsl(var(--canvas))]"
-            style={showIssues ? {gridTemplateRows: `50px minmax(180px, 1fr) ${issuesHeight}px 29px`} : undefined}
+            className={cn(
+                'relative col-start-1 grid min-h-0 min-w-0 grid-rows-[50px_minmax(0,1fr)_29px] bg-[hsl(var(--canvas))]',
+                presentationMode && 'col-span-full row-span-full grid-rows-[minmax(0,1fr)]',
+            )}
+            style={!presentationMode && showIssues ? {gridTemplateRows: `50px minmax(180px, 1fr) ${issuesHeight}px 29px`} : undefined}
         >
-            <div className="z-4 flex items-center justify-between border-b border-border bg-[hsl(var(--panel)/.82)] px-3.5 backdrop-blur-md">
-                <div className="flex h-8 w-52 items-center gap-2 rounded-md border border-border bg-background px-2 text-muted-foreground">
+            {!presentationMode && <div
+                className="z-4 flex items-center justify-between border-b border-border bg-[hsl(var(--panel)/.82)] px-3.5 backdrop-blur-md">
+                <div
+                    className="flex h-8 w-52 items-center gap-2 rounded-md border border-border bg-background px-2 text-muted-foreground">
                     <Search size={15}/>
                     <Input
                         className="h-auto w-full border-0 bg-transparent p-0 text-xs text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -262,17 +294,20 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 </div>
 
                 <div className="flex items-center gap-2.5 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:text-xs">
-                    <span className="text-[10px] text-muted-foreground">{t('workspace.pageCount', {count: document.nodes.length})}</span>
+                    <span
+                        className="text-[10px] text-muted-foreground">{t('workspace.pageCount', {count: document.nodes.length})}</span>
                     {view === 'table' && (
                         <>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                <SelectTrigger className={toolbarSelectClass} aria-label={t('workspace.filterByStatus')}>
+                                <SelectTrigger className={toolbarSelectClass}
+                                               aria-label={t('workspace.filterByStatus')}>
                                     <SelectValue/>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                    <SelectItem value="all">{t('workspace.filter.statusLabel')}</SelectItem>
-                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
+                                        <SelectItem value="all">{t('workspace.filter.statusLabel')}</SelectItem>
+                                        {PAGE_STATUSES.map((status) => <SelectItem key={status}
+                                                                                   value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -282,8 +317,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                    <SelectItem value="all">{t('workspace.filter.typeLabel')}</SelectItem>
-                                    {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{t(`pageType.${type}`)}</SelectItem>)}
+                                        <SelectItem value="all">{t('workspace.filter.typeLabel')}</SelectItem>
+                                        {PAGE_TYPES.map((type) => <SelectItem key={type}
+                                                                              value={type}>{t(`pageType.${type}`)}</SelectItem>)}
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -293,8 +329,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                    <SelectItem value="all">{t('workspace.filter.ownerLabel')}</SelectItem>
-                                    {owners.map((owner) => <SelectItem key={owner} value={owner}>{owner}</SelectItem>)}
+                                        <SelectItem value="all">{t('workspace.filter.ownerLabel')}</SelectItem>
+                                        {owners.map((owner) => <SelectItem key={owner}
+                                                                           value={owner}>{owner}</SelectItem>)}
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
@@ -304,13 +341,15 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                    <SelectItem value="all">{t('workspace.filter.seoLabel')}</SelectItem>
-                                    {SEO_IMPORTANCE_LEVELS.map((level) => <SelectItem key={level} value={level}>{t(`seoImportance.${level}`)}</SelectItem>)}
+                                        <SelectItem value="all">{t('workspace.filter.seoLabel')}</SelectItem>
+                                        {SEO_IMPORTANCE_LEVELS.map((level) => <SelectItem key={level}
+                                                                                          value={level}>{t(`seoImportance.${level}`)}</SelectItem>)}
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
                             {activeFilterCount > 0 && (
-                                <Button variant="ghost" className="border border-primary/30 bg-accent px-2 text-primary" onClick={clearFilters}>
+                                <Button variant="ghost" className="border border-primary/30 bg-accent px-2 text-primary"
+                                        onClick={clearFilters}>
                                     {t('workspace.clearFilters', {count: activeFilterCount})}
                                 </Button>
                             )}
@@ -324,11 +363,23 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                     >
                         <AlertTriangle size={14}/>{issues.length}
                     </Button>
+                    <Button
+                        variant="ghost"
+                        className="gap-1 border border-border bg-background px-2 text-muted-foreground"
+                        onClick={() => onPresentationModeChange(true)}
+                        title={t('workspace.presentationMode')}
+                    >
+                        <MonitorPlay size={15}/>{t('workspace.presentationMode')}
+                    </Button>
                     <div className={layoutControlsClass} aria-label={t('workspace.viewLabel')}>
-                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'canvas' && 'bg-accent text-primary')} aria-label={t('workspace.canvasView')} onClick={() => setView('canvas')}>
+                        <Button variant="ghost"
+                                className={cn(layoutButtonClass, view === 'canvas' && 'bg-accent text-primary')}
+                                aria-label={t('workspace.canvasView')} onClick={() => setView('canvas')}>
                             <Network size={15}/>
                         </Button>
-                        <Button variant="ghost" className={cn(layoutButtonClass, view === 'table' && 'bg-accent text-primary')} aria-label={t('workspace.tableView')} onClick={() => setView('table')}>
+                        <Button variant="ghost"
+                                className={cn(layoutButtonClass, view === 'table' && 'bg-accent text-primary')}
+                                aria-label={t('workspace.tableView')} onClick={() => setView('table')}>
                             <Table2 size={15}/>
                         </Button>
                     </div>
@@ -362,7 +413,8 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 <Plus size={15}/>
                                 {t('workspace.addPage')}
                             </Button>
-                            <div className="flex h-8 items-stretch overflow-hidden rounded-md border border-border bg-[hsl(var(--panel))] [&_button]:grid [&_button]:h-full [&_button]:w-8 [&_button]:place-items-center [&_button]:rounded-none [&_button]:border-0 [&_button:hover]:bg-muted">
+                            <div
+                                className="flex h-8 items-stretch overflow-hidden rounded-md border border-border bg-[hsl(var(--panel))] [&_button]:grid [&_button]:h-full [&_button]:w-8 [&_button]:place-items-center [&_button]:rounded-none [&_button]:border-0 [&_button:hover]:bg-muted">
                                 <Button
                                     variant="ghost"
                                     aria-label={t('workspace.zoomOut')}
@@ -388,13 +440,15 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                         </>
                     )}
                 </div>
-            </div>
+            </div>}
 
-            {view === 'table' ? (
+            {!presentationMode && view === 'table' ? (
                 <div className="overflow-auto p-4">
                     {selectedRows.length > 0 && (
-                        <div className="sticky left-0 top-0 z-10 mb-2 flex h-10 items-center gap-3 rounded-lg border border-primary/25 bg-accent px-3 text-[10px] [&_button]:h-7 [&_button]:rounded-md [&_button]:border [&_button]:border-border [&_button]:bg-background [&_button]:px-2 [&_button]:text-[9px]">
-                            <strong className="text-primary">{t('workspace.rowsSelected', {count: selectedRows.length})}</strong>
+                        <div
+                            className="sticky left-0 top-0 z-10 mb-2 flex h-10 items-center gap-3 rounded-lg border border-primary/25 bg-accent px-3 text-[10px] [&_button]:h-7 [&_button]:rounded-md [&_button]:border [&_button]:border-border [&_button]:bg-background [&_button]:px-2 [&_button]:text-[9px]">
+                            <strong
+                                className="text-primary">{t('workspace.rowsSelected', {count: selectedRows.length})}</strong>
                             <Select
                                 key={bulkActionKey}
                                 onValueChange={(value) => {
@@ -407,13 +461,14 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectGroup>
-                                    {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
+                                        {PAGE_STATUSES.map((status) => <SelectItem key={status}
+                                                                                   value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
                             <Button
                                 variant="ghost"
-                                className="!gap-1.5 !border-destructive/30 !bg-destructive/10 !text-destructive hover:!bg-destructive/20"
+                                className="gap-1.5! border-destructive/30! bg-destructive/10! text-destructive! hover:bg-destructive/20!"
                                 onClick={() => void onDeleteNodes(selectedRows).then((deleted) => {
                                     if (deleted) setSelectedRows([]);
                                 })}
@@ -421,10 +476,12 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 <Trash2 size={12}/>
                                 {t('common.delete')}
                             </Button>
-                            <Button variant="ghost" onClick={() => setSelectedRows([])}>{t('workspace.clearSelection')}</Button>
+                            <Button variant="ghost"
+                                    onClick={() => setSelectedRows([])}>{t('workspace.clearSelection')}</Button>
                         </div>
                     )}
-                    <Table className="border-separate border-spacing-0 overflow-hidden rounded-xl border border-border bg-card text-left text-[10px]">
+                    <Table
+                        className="border-separate border-spacing-0 overflow-hidden rounded-xl border border-border bg-card text-left text-[10px]">
                         <TableHeader>
                             <TableRow className="hover:bg-transparent">
                                 <TableHead className={`${tableHeaderClass} w-10 min-w-10 cursor-default resize-none`}>
@@ -448,7 +505,8 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                 className={cn('cursor-pointer hover:bg-accent/60', selectedId === node.id && 'bg-accent/60')}
                                 onClick={() => onSelectNode(node.id)}
                             >
-                                <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
+                                <TableCell className={cn(tableCellClass, 'pl-3')}
+                                           onClick={(event) => event.stopPropagation()}>
                                     <Checkbox
                                         checked={selectedRows.includes(node.id)}
                                         onCheckedChange={(checked) => setSelectedRows((current) => checked === true ? [...current, node.id] : current.filter((id) => id !== node.id))}
@@ -473,25 +531,29 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     />
                                 </TableCell>
                                 <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
-                                    <Select value={node.pageType} onValueChange={(value) => onUpdateNode(node.id, 'pageType', value as SitemapNode['pageType'])}>
+                                    <Select value={node.pageType}
+                                            onValueChange={(value) => onUpdateNode(node.id, 'pageType', value as SitemapNode['pageType'])}>
                                         <SelectTrigger className={tableFieldClass}>
                                             <SelectValue/>
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                            {PAGE_TYPES.map((type) => <SelectItem key={type} value={type}>{t(`pageType.${type}`)}</SelectItem>)}
+                                                {PAGE_TYPES.map((type) => <SelectItem key={type}
+                                                                                      value={type}>{t(`pageType.${type}`)}</SelectItem>)}
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>
                                 </TableCell>
                                 <TableCell className={tableCellClass} onClick={(event) => event.stopPropagation()}>
-                                    <Select value={node.status} onValueChange={(value) => onUpdateNode(node.id, 'status', value as SitemapNode['status'])}>
+                                    <Select value={node.status}
+                                            onValueChange={(value) => onUpdateNode(node.id, 'status', value as SitemapNode['status'])}>
                                         <SelectTrigger className={tableFieldClass}>
                                             <SelectValue/>
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectGroup>
-                                            {PAGE_STATUSES.map((status) => <SelectItem key={status} value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
+                                                {PAGE_STATUSES.map((status) => <SelectItem key={status}
+                                                                                           value={status}>{t(`pageStatus.${status}`)}</SelectItem>)}
                                             </SelectGroup>
                                         </SelectContent>
                                     </Select>
@@ -505,7 +567,8 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                         onChange={(event) => onUpdateNode(node.id, 'owner', event.target.value)}
                                     />
                                 </TableCell>
-                                <TableCell className={tableCellClass}>{issues.filter((issue) => issue.nodeId === node.id).length || '✓'}</TableCell>
+                                <TableCell
+                                    className={tableCellClass}>{issues.filter((issue) => issue.nodeId === node.id).length || '✓'}</TableCell>
                             </TableRow>
                         ))}</TableBody>
                     </Table>
@@ -569,13 +632,14 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                     onDropTargetChange={onDropTargetChange}
                                     canMoveTo={canMoveTo}
                                     onDropNode={onDropNode}
+                                    onSizeChange={onCardSizeChange}
                                 />
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {document.nodes.length > 0 && (
+                {!presentationMode && document.nodes.length > 0 && (
                     <MiniMap
                         layout={layout}
                         nodes={document.nodes}
@@ -587,8 +651,10 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 )}
             </div>}
 
-            {showIssues && (
-                <section className="relative flex min-h-0 flex-col border-t border-border bg-[hsl(var(--panel))] shadow-[0_-3px_12px_rgb(7_20_46_/_0.05)]" aria-label={t('workspace.qualityCheck')}>
+            {!presentationMode && showIssues && (
+                <section
+                    className="relative flex min-h-0 flex-col border-t border-border bg-[hsl(var(--panel))] shadow-[0_-3px_12px_rgb(7_20_46_/_0.05)]"
+                    aria-label={t('workspace.qualityCheck')}>
                     <div
                         className="absolute inset-x-0 -top-1 z-10 h-2 cursor-ns-resize touch-none after:absolute after:inset-x-0 after:top-0.75 after:h-px after:bg-transparent hover:after:bg-primary active:after:bg-primary"
                         role="separator"
@@ -596,44 +662,61 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                         aria-orientation="horizontal"
                         onPointerDown={startIssuesResize}
                     />
-                    <header className="flex h-9 shrink-0 items-center justify-between border-b border-border bg-muted/50 px-3">
+                    <header
+                        className="flex h-9 shrink-0 items-center justify-between border-b border-border bg-muted/50 px-3">
                         <div className="flex items-center gap-2 text-primary">
                             <AlertTriangle size={14}/>
                             <strong className="text-[10px] text-foreground">{t('workspace.qualityCheck')}</strong>
-                            <span className="text-[9px] text-muted-foreground">{t('workspace.issuesCount', {count: issues.length})}</span>
+                            <span
+                                className="text-[9px] text-muted-foreground">{t('workspace.issuesCount', {count: issues.length})}</span>
                         </div>
-                        <Button variant="ghost" size="icon" className="size-6 text-muted-foreground" aria-label={t('workspace.closeIssuesAria')} onClick={() => setShowIssues(false)}>
+                        <Button variant="ghost" size="icon" className="size-6 text-muted-foreground"
+                                aria-label={t('workspace.closeIssuesAria')} onClick={() => setShowIssues(false)}>
                             <X size={14}/>
                         </Button>
                     </header>
                     <div className="min-h-0 overflow-auto">
-                        {issues.length === 0 ? <p className="m-0 px-4 py-5 text-[10px] text-muted-foreground">{t('workspace.noIssuesFound')}</p> : issues.map((issue, index) => {
-                            const node = document.nodes.find((item) => item.id === issue.nodeId);
-                            return (
-                                <Button
-                                    variant="ghost"
-                                    className="grid h-auto min-h-8 w-full grid-cols-[8px_150px_1fr_60px] items-center justify-start gap-2 rounded-none border-b border-border px-3 text-left text-[9px] font-normal text-muted-foreground hover:bg-accent/60 hover:text-foreground"
-                                    key={`${issue.nodeId}-${index}`}
-                                    onClick={() => onSelectNode(issue.nodeId)}
-                                >
-                                    <i className={cn('size-1.5 rounded-full bg-amber-500', issue.level === 'error' && 'bg-destructive')}/>
-                                    <b className="truncate text-foreground">{node?.title}</b>
-                                    <span>{t(issue.messageKey)}</span>
-                                    <em className="text-right text-[8px] not-italic uppercase tracking-wide">{issue.level === 'error' ? t('workspace.levelError') : t('workspace.levelWarning')}</em>
-                                </Button>
-                            );
-                        })}
+                        {issues.length === 0 ?
+                            <p className="m-0 px-4 py-5 text-[10px] text-muted-foreground">{t('workspace.noIssuesFound')}</p> : issues.map((issue, index) => {
+                                const node = document.nodes.find((item) => item.id === issue.nodeId);
+                                return (
+                                    <Button
+                                        variant="ghost"
+                                        className="grid h-auto min-h-8 w-full grid-cols-[8px_150px_1fr_60px] items-center justify-start gap-2 rounded-none border-b border-border px-3 text-left text-[9px] font-normal text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+                                        key={`${issue.nodeId}-${index}`}
+                                        onClick={() => onSelectNode(issue.nodeId)}
+                                    >
+                                        <i className={cn('size-1.5 rounded-full bg-amber-500', issue.level === 'error' && 'bg-destructive')}/>
+                                        <b className="truncate text-foreground">{node?.title}</b>
+                                        <span>{t(issue.messageKey)}</span>
+                                        <em className="text-right text-[8px] not-italic uppercase tracking-wide">{issue.level === 'error' ? t('workspace.levelError') : t('workspace.levelWarning')}</em>
+                                    </Button>
+                                );
+                            })}
                     </div>
                 </section>
             )}
 
-            <div className="flex items-center gap-2 border-t border-border bg-[hsl(var(--panel))] px-3 text-[9px] text-muted-foreground">
-                <span className="size-1.5 rounded-full bg-[hsl(var(--success))] shadow-[0_0_0_3px_hsl(var(--success)/.12)]"/>
-                {message}
-                <span className="ml-auto max-w-[45%] truncate">
-                    {currentPath || t('workspace.noFileYet')}
-                </span>
-            </div>
+            {presentationMode ? (
+                <Button
+                    variant="secondary"
+                    size="sm"
+                    className="absolute right-5 top-5 z-10 border border-border bg-[hsl(var(--panel)/.88)] shadow-md backdrop-blur"
+                    onClick={() => onPresentationModeChange(false)}
+                >
+                    <X size={15}/>{t('workspace.exitPresentationMode')}
+                </Button>
+            ) : (
+                <div
+                    className="flex items-center gap-2 border-t border-border bg-[hsl(var(--panel))] px-3 text-[9px] text-muted-foreground">
+                    <span
+                        className="size-1.5 rounded-full bg-[hsl(var(--success))] shadow-[0_0_0_3px_hsl(var(--success)/.12)]"/>
+                    {message}
+                    <span className="ml-auto max-w-[45%] truncate">
+                        {currentPath || t('workspace.noFileYet')}
+                    </span>
+                </div>
+            )}
         </main>
     );
 });

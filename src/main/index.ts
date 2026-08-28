@@ -3,7 +3,14 @@ import {readFile, rename, stat, writeFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import * as process from 'node:process';
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {CrawlRequest, EnrichImportRequest, ExportRequest, ImportXmlUrlRequest, SaveSitemapRequest, SetThemeRequest} from './gen/app';
+import {
+    CrawlRequest,
+    EnrichImportRequest,
+    ExportRequest,
+    ImportXmlUrlRequest,
+    SaveSitemapRequest,
+    SetThemeRequest
+} from './gen/app';
 import {AppServiceDescriptor, MenuActionServiceDescriptor, OpenFileServiceDescriptor} from './gen/ipc_service';
 import {crawlWebsite} from './import/crawler';
 import {enrichImportedPage} from './import/page-parser';
@@ -17,7 +24,7 @@ const startupSitemapPath = app.launchInfo.files.find((path) => extname(path).toL
 const openedSitemaps = ipc.registerService(OpenFileServiceDescriptor);
 const menuActions = ipc.registerService(MenuActionServiceDescriptor);
 
-const EXPORT_FORMATS: Record<string, {extension: string; label: string; binary?: boolean}> = {
+const EXPORT_FORMATS: Record<string, { extension: string; label: string; binary?: boolean }> = {
     xml: {extension: 'xml', label: 'XML'},
     csv: {extension: 'csv', label: 'CSV'},
     md: {extension: 'md', label: 'Markdown'},
@@ -29,7 +36,7 @@ const win = new BrowserWindow({
     url: app.url,
     title: 'Sitemap Builder',
     size: {width: 1440, height: 900},
-    minimumSize: {width: 1080, height: 720},
+    minimumSize: {width: 1200, height: 800},
     windowTitleVisible: false,
     windowTitlebarVisible: process.platform !== 'darwin',
 });
@@ -118,10 +125,10 @@ ipc.registerService(AppServiceDescriptor, {
     async ParseXmlUrl(request: ImportXmlUrlRequest) {
         return {canceled: false, ...await parseXmlSitemapUrl(request.url)};
     },
-    async *CrawlWebsite(request: CrawlRequest, context) {
+    async* CrawlWebsite(request: CrawlRequest, context) {
         yield* crawlWebsite(request, context.signal);
     },
-    async *EnrichImportedPages(request: EnrichImportRequest, context) {
+    async* EnrichImportedPages(request: EnrichImportRequest, context) {
         const total = request.pages.length;
         const concurrency = 6;
         const pending = new Map<number, Promise<(typeof request.pages)[number]>>();
@@ -196,21 +203,48 @@ app.setMenu(new Menu({
         new MenuWithRole({
             role: 'fileMenu',
             items: [
-                new MenuItem({id: 'new', label: 'Neue Sitemap…', shortcut: 'CommandOrControl+N', action: () => emitMenuAction('new')}),
-                new MenuItem({id: 'open', label: 'Öffnen…', shortcut: 'CommandOrControl+O', action: () => emitMenuAction('open')}),
-                new MenuItem({id: 'import-website', label: 'Bestehende Website importieren…', action: () => emitMenuAction('import-website')}),
+                new MenuItem({
+                    id: 'new',
+                    label: 'Neue Sitemap…',
+                    shortcut: 'CommandOrControl+N',
+                    action: () => emitMenuAction('new')
+                }),
+                new MenuItem({
+                    id: 'open',
+                    label: 'Öffnen…',
+                    shortcut: 'CommandOrControl+O',
+                    action: () => emitMenuAction('open')
+                }),
+                new MenuItem({
+                    id: 'import-website',
+                    label: 'Bestehende Website importieren…',
+                    action: () => emitMenuAction('import-website')
+                }),
                 'separator',
                 new MenuItem({id: 'save', label: 'Speichern', action: () => emitMenuAction('save')}),
-                new MenuItem({id: 'save-as', label: 'Speichern unter…', shortcut: 'CommandOrControl+Shift+S', action: () => emitMenuAction('save-as')}),
+                new MenuItem({
+                    id: 'save-as',
+                    label: 'Speichern unter…',
+                    shortcut: 'CommandOrControl+Shift+S',
+                    action: () => emitMenuAction('save-as')
+                }),
                 'separator',
                 new Menu({
                     label: 'Exportieren',
                     items: [
-                        new MenuItem({id: 'export-xml', label: 'XML-Sitemap…', action: () => emitMenuAction('export-xml')}),
+                        new MenuItem({
+                            id: 'export-xml',
+                            label: 'XML-Sitemap…',
+                            action: () => emitMenuAction('export-xml')
+                        }),
                         new MenuItem({id: 'export-csv', label: 'CSV…', action: () => emitMenuAction('export-csv')}),
                         new MenuItem({id: 'export-pdf', label: 'PDF…', action: () => emitMenuAction('export-pdf')}),
                         new MenuItem({id: 'export-md', label: 'Markdown…', action: () => emitMenuAction('export-md')}),
-                        new MenuItem({id: 'export-html', label: 'Statische HTML-Ansicht…', action: () => emitMenuAction('export-html')}),
+                        new MenuItem({
+                            id: 'export-html',
+                            label: 'Statische HTML-Ansicht…',
+                            action: () => emitMenuAction('export-html')
+                        }),
                     ],
                 }),
                 'separator',

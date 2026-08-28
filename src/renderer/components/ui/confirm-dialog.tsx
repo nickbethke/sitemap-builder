@@ -25,15 +25,15 @@ type ConfirmDialogProps = {
 };
 
 export function ConfirmDialog({
-    open,
-    title,
-    description,
-    confirmLabel,
-    cancelLabel,
-    destructive = false,
-    onConfirm,
-    onCancel,
-}: ConfirmDialogProps) {
+                                  open,
+                                  title,
+                                  description,
+                                  confirmLabel,
+                                  cancelLabel,
+                                  destructive = false,
+                                  onConfirm,
+                                  onCancel,
+                              }: ConfirmDialogProps) {
     const {t} = useTranslation();
 
     return (
@@ -41,7 +41,8 @@ export function ConfirmDialog({
             if (!nextOpen) onCancel();
         }}>
             <AlertDialogContent className="max-w-md overflow-hidden p-0">
-                <AlertDialogHeader className="grid grid-cols-[auto_1fr] gap-x-3 border-b border-border px-5 py-4 text-left">
+                <AlertDialogHeader
+                    className="grid grid-cols-[auto_1fr] gap-x-3 border-b border-border px-5 py-4 text-left">
                     <span className={cn(
                         'row-span-2 grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary',
                         destructive && 'bg-destructive/10 text-destructive',

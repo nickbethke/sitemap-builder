@@ -1,4 +1,4 @@
-import {CARD_HEIGHT, CARD_WIDTH, type SitemapLayout, type SitemapNode} from '@/lib/sitemap.ts';
+import {type SitemapLayout, type SitemapNode} from '@/lib/sitemap.ts';
 import {cn} from '@/lib/utils.ts';
 import {type PointerEvent as ReactPointerEvent} from 'react';
 
@@ -75,8 +75,8 @@ export function MiniMap({
                             style={{
                                 left: position.x * scale,
                                 top: position.y * scale,
-                                width: Math.max(2, CARD_WIDTH * scale),
-                                height: Math.max(2, CARD_HEIGHT * scale),
+                                width: Math.max(2, layout.cardSizes[node.id].width * scale),
+                                height: Math.max(2, layout.cardSizes[node.id].height * scale),
                             }}
                         />
                     );

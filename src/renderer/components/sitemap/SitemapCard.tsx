@@ -3,7 +3,6 @@ import {Badge} from '@/components/ui/badge.tsx';
 import {Card} from '@/components/ui/card.tsx';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {
-    CARD_HEIGHT,
     CARD_WIDTH,
     type LayoutDirection,
     type SeoImportance,
@@ -12,10 +11,10 @@ import {
     type SitemapNode,
 } from '@/lib/sitemap.ts';
 import {cn} from '@/lib/utils.ts';
-import {ChevronDown, Link2} from 'lucide-react';
-import {type DragEvent} from 'react';
+import {type DragEvent, useEffect, useRef} from 'react';
+import {nl2br} from "@/lib/manipulate.tsx";
 
-const badgeClass = 'h-4 px-1.5 text-[7px] uppercase tracking-wide';
+const badgeClass = 'py-0.75 px-1.5 text-[6px] uppercase tracking-wide leading-none';
 const seoBadgeStyles: Record<SeoImportance, string> = {
     'high': 'border-destructive/25 text-destructive/80',
     'medium': 'border-amber-500/25 text-amber-700 dark:text-amber-400',
@@ -36,15 +35,15 @@ export function connectionPath(
 
     if (direction === 'horizontal') {
         const x1 = from.x + CARD_WIDTH;
-        const y1 = from.y + CARD_HEIGHT / 2;
+        const y1 = from.y + layout.cardSizes[node.parentId].height / 2;
         const x2 = to.x;
-        const y2 = to.y + CARD_HEIGHT / 2;
+        const y2 = to.y + layout.cardSizes[node.id].height / 2;
 
         return `M ${x1} ${y1} C ${x1 + 52} ${y1}, ${x2 - 52} ${y2}, ${x2} ${y2}`;
     }
 
     const x1 = from.x + CARD_WIDTH / 2;
-    const y1 = from.y + CARD_HEIGHT;
+    const y1 = from.y + layout.cardSizes[node.parentId].height;
     const x2 = to.x + CARD_WIDTH / 2;
     const y2 = to.y;
 
@@ -71,30 +70,40 @@ type SitemapCardProps = {
     onDropTargetChange: (id: string | null) => void;
     canMoveTo: (nodeId: string, parentId: string) => boolean;
     onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void;
+    onSizeChange: (nodeId: string, height: number) => void;
 };
 
 export function SitemapCard({
-    node,
-    document,
-    layout,
-    layoutDirection,
-    selected,
-    draggedId,
-    dropTarget,
-    dimmed,
-    onSelect,
-    onAddChild,
-    onDuplicate,
-    onDelete,
-    onMoveUp,
-    onMoveDown,
-    onMoveUpLevel,
-    onDraggedNodeChange,
-    onDropTargetChange,
-    canMoveTo,
-    onDropNode,
-}: SitemapCardProps) {
+                                node,
+                                document,
+                                layout,
+                                layoutDirection,
+                                selected,
+                                draggedId,
+                                dropTarget,
+                                dimmed,
+                                onSelect,
+                                onAddChild,
+                                onDuplicate,
+                                onDelete,
+                                onMoveUp,
+                                onMoveDown,
+                                onMoveUpLevel,
+                                onDraggedNodeChange,
+                                onDropTargetChange,
+                                canMoveTo,
+                                onDropNode,
+                                onSizeChange,
+                            }: SitemapCardProps) {
     const {t} = useTranslation();
+    const cardRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const card = cardRef.current;
+        if (!card) return;
+        const observer = new ResizeObserver(([entry]) => onSizeChange(node.id, entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height));
+        observer.observe(card);
+        return () => observer.disconnect();
+    }, [node.id, onSizeChange]);
     const position = layout.positions[node.id];
     if (!position) return null;
 
@@ -108,7 +117,7 @@ export function SitemapCard({
         (candidate) => candidate.id === node.id,
     );
     const className = cn(
-        'absolute flex h-36.5 w-59 cursor-grab select-none flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-colors hover:border-primary/55 active:cursor-grabbing',
+        'absolute flex w-59 cursor-grab select-none flex-col rounded-lg border border-border bg-card shadow-sm transition-[left,top,border-color,box-shadow,opacity,transform] duration-200 hover:border-primary/55 active:cursor-grabbing',
         selected && 'border-primary ring-2 ring-primary/15',
         dropTarget && 'scale-[1.035] border-[hsl(var(--success))] ring-3 ring-[hsl(var(--success)/.15)]',
         dimmed && 'opacity-20',
@@ -116,6 +125,7 @@ export function SitemapCard({
 
     return (
         <Card
+            ref={cardRef}
             className={className}
             style={{left: position.x, top: position.y}}
             draggable={node.parentId !== null}
@@ -146,8 +156,8 @@ export function SitemapCard({
                 <i className="size-1.5 rounded-full bg-emerald-400/70"/>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col px-3.5 pb-3 pt-2.5">
-                <div className="flex h-5 items-start justify-between">
+            <div className="flex flex-col px-3.5 py-3.5">
+                <div className="flex items-center justify-between mb-1">
                     <div className="flex min-w-0 items-center gap-1">
                         <Badge
                             className={cn(badgeClass, seoBadgeStyles[node.seoImportance])}
@@ -155,7 +165,8 @@ export function SitemapCard({
                         >
                             {t(`seoImportance.${node.seoImportance}`)}
                         </Badge>
-                        {node.noIndex && <Badge className={badgeClass} variant="destructive">{t('export.noIndexLabel')}</Badge>}
+                        {node.noIndex &&
+                            <Badge className={badgeClass} variant="destructive">{t('export.noIndexLabel')}</Badge>}
                     </div>
                     <CardContextMenu
                         canDelete={node.parentId !== null}
@@ -171,13 +182,15 @@ export function SitemapCard({
                     />
                 </div>
 
-                <h3 className="mb-0.5 mt-1 text-sm leading-tight tracking-tight">{node.title || t('export.untitled')}</h3>
+                <h3 className="mb-0.5 mt-1 text-sm font-medium leading-tight tracking-tight">{node.title || t('export.untitled')}</h3>
                 <div className="flex items-center gap-1 text-[9px] text-primary">
-                    <Link2 size={13}/>
                     {node.slug || '/'}
                 </div>
-                {node.description && <p className="mb-1 mt-2 flex-1 overflow-hidden text-[9px] leading-snug text-muted-foreground">{node.description}</p>}
-                <footer className="mt-auto flex items-center justify-between border-t border-border pt-2 text-[8px] text-muted-foreground">
+                {node.description ?
+                    <p className="mb-1 mt-2 text-[9px] leading-snug text-muted-foreground">{nl2br(node.description)}</p> :
+                    <div className="mb-4"></div>}
+                <footer
+                    className="mt-auto flex items-center justify-between border-t border-border pt-2 text-[8px] text-muted-foreground">
                     <span>{t(`pageType.${node.pageType}`)}</span>
                     <span className="flex items-center gap-1">
                         <i className="size-1.5 rounded-full bg-[hsl(var(--success))]"/>
@@ -188,11 +201,10 @@ export function SitemapCard({
 
             {childCount > 0 && (
                 <div className={cn(
-                    'absolute -right-3.5 top-1/2 flex h-7 min-w-7 -translate-y-1/2 items-center justify-center gap-0.5 rounded-full border border-primary/30 bg-card px-1 text-[9px] font-semibold text-primary shadow-sm [&_svg]:size-3 [&_svg]:shrink-0 [&_svg]:-rotate-90',
-                    layoutDirection === 'vertical' && '-bottom-3.5 left-1/2 right-auto top-auto -translate-x-1/2 translate-y-0 [&_svg]:rotate-0',
+                    'absolute -right-3 top-1/2 flex h-6 min-w-5 -translate-y-1/2 items-center justify-center gap-0 rounded-lg  border border-primary/30 bg-primary text-white px-2 text-[9px] font-semibold shadow-sm [&_svg]:size-3 [&_svg]:shrink-0 [&_svg]:-rotate-90',
+                    layoutDirection === 'vertical' && '-bottom-3 left-1/2 right-auto top-auto -translate-x-1/2 translate-y-0 [&_svg]:rotate-0',
                 )}>
-                    <ChevronDown size={13}/>
-                    {childCount}
+                    <span>{childCount}</span>
                 </div>
             )}
         </Card>

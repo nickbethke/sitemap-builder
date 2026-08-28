@@ -1,4 +1,4 @@
-import {DEFAULT_LOCALE, type Locale, translations} from '@/lib/i18n/translations.ts';
+import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from '@/lib/i18n/translations.ts';
 
 export type PageType =
     | 'home'
@@ -41,7 +41,7 @@ export type SitemapNode = {
 export type ValidationIssue = {
     nodeId: string;
     level: 'error' | 'warning';
-    messageKey: string;
+    messageKey: TranslationKey;
 };
 
 export type SitemapProject = {
@@ -61,8 +61,8 @@ export type ProjectTemplateId = 'empty' | 'company' | 'local-service' | 'shop';
 
 export type ProjectTemplate = {
     id: ProjectTemplateId;
-    titleKey: string;
-    descriptionKey: string;
+    titleKey: TranslationKey;
+    descriptionKey: TranslationKey;
     pageCount: number;
 };
 
@@ -98,8 +98,14 @@ export type Position = {
     y: number;
 };
 
+export type CardSize = {
+    width: number;
+    height: number;
+};
+
 export type SitemapLayout = {
     positions: Record<string, Position>;
+    cardSizes: Record<string, CardSize>;
     width: number;
     height: number;
 };
@@ -110,9 +116,9 @@ export type UpdateNode = <K extends keyof SitemapNode>(
 ) => void;
 
 export const CARD_WIDTH = 236;
-export const CARD_HEIGHT = 146;
-const COLUMN_GAP = 104;
-const ROW_GAP = 34;
+export const DEFAULT_CARD_HEIGHT = 146;
+const COLUMN_GAP = 200;
+const ROW_GAP = 50;
 const VERTICAL_LEVEL_GAP = 96;
 
 export const PAGE_TYPES: PageType[] = [
@@ -559,47 +565,48 @@ export function createProjectDocument(
     };
 }
 
+const MAX_SEO_DEPTH = 3;
+
 export function validateDocument(document: SitemapDocument): ValidationIssue[] {
     const issues: ValidationIssue[] = [];
     const slugCounts = new Map<string, number>();
-    document.nodes.forEach((node) => slugCounts.set(node.slug, (slugCounts.get(node.slug) ?? 0) + 1));
+    const seoTitleCounts = new Map<string, number>();
+    const nodesById = new Map(document.nodes.map((node) => [node.id, node]));
+    const normalizedSeoTitle = (node: SitemapNode) => node.seoTitle?.trim().toLocaleLowerCase() ?? '';
+
+    const hierarchyDepth = (node: SitemapNode): number | null => {
+        let depth = 0;
+        let parentId = node.parentId;
+        const visited = new Set([node.id]);
+        while (parentId) {
+            if (visited.has(parentId)) return null;
+            visited.add(parentId);
+            const parent = nodesById.get(parentId);
+            if (!parent) return null;
+            depth += 1;
+            parentId = parent.parentId;
+        }
+        return depth;
+    };
+
+    document.nodes.forEach((node) => {
+        slugCounts.set(node.slug, (slugCounts.get(node.slug) ?? 0) + 1);
+        const seoTitle = normalizedSeoTitle(node);
+        if (seoTitle && !node.noIndex) seoTitleCounts.set(seoTitle, (seoTitleCounts.get(seoTitle) ?? 0) + 1);
+    });
 
     document.nodes.forEach((node) => {
         if (!node.title.trim()) issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.titleMissing'});
-        if (!node.slug.startsWith('/')) issues.push({
-            nodeId: node.id,
-            level: 'error',
-            messageKey: 'validation.slugMustStartWithSlash'
-        });
+        if (!node.slug.startsWith('/')) issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.slugMustStartWithSlash'});
         if (/\s/.test(node.slug)) issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.slugContainsSpaces'});
-        if ((slugCounts.get(node.slug) ?? 0) > 1) issues.push({
-            nodeId: node.id,
-            level: 'error',
-            messageKey: 'validation.slugDuplicate'
-        });
-        if (node.parentId && !document.nodes.some((item) => item.id === node.parentId)) {
-            issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.parentMissing'});
-        }
-        if (!node.seoTitle?.trim() && !node.noIndex) issues.push({
-            nodeId: node.id,
-            level: 'warning',
-            messageKey: 'validation.seoTitleMissing'
-        });
-        if ((node.seoTitle?.length ?? 0) > 60) issues.push({
-            nodeId: node.id,
-            level: 'warning',
-            messageKey: 'validation.seoTitleTooLong'
-        });
-        if (!node.seoDescription?.trim() && !node.noIndex) issues.push({
-            nodeId: node.id,
-            level: 'warning',
-            messageKey: 'validation.seoDescriptionMissing'
-        });
-        if ((node.seoDescription?.length ?? 0) > 160) issues.push({
-            nodeId: node.id,
-            level: 'warning',
-            messageKey: 'validation.seoDescriptionTooLong'
-        });
+        if ((slugCounts.get(node.slug) ?? 0) > 1) issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.slugDuplicate'});
+        if (node.parentId && !nodesById.has(node.parentId)) issues.push({nodeId: node.id, level: 'error', messageKey: 'validation.parentMissing'});
+        if (!node.seoTitle?.trim() && !node.noIndex) issues.push({nodeId: node.id, level: 'warning', messageKey: 'validation.seoTitleMissing'});
+        if ((node.seoTitle?.length ?? 0) > 60) issues.push({nodeId: node.id, level: 'warning', messageKey: 'validation.seoTitleTooLong'});
+        if (!node.noIndex && (seoTitleCounts.get(normalizedSeoTitle(node)) ?? 0) > 1) issues.push({nodeId: node.id, level: 'warning', messageKey: 'validation.seoTitleDuplicate'});
+        if (!node.seoDescription?.trim() && !node.noIndex) issues.push({nodeId: node.id, level: 'warning', messageKey: 'validation.seoDescriptionMissing'});
+        if ((node.seoDescription?.length ?? 0) > 160) issues.push({nodeId: node.id, level: 'warning', messageKey: 'validation.seoDescriptionTooLong'});
+        if ((hierarchyDepth(node) ?? 0) > MAX_SEO_DEPTH) issues.push({nodeId: node.id, level: 'warning', messageKey: 'validation.hierarchyTooDeep'});
     });
     return issues;
 }
@@ -616,7 +623,7 @@ export function documentToXml(document: SitemapDocument): string {
 }
 
 export function documentToCsv(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
-    const t = (key: string) => translations[locale][key] ?? key;
+    const t = (key: TranslationKey) => translations[locale][key];
     const quote = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
     const header = [
         t('export.csv.title'), t('export.csv.url'), t('export.csv.pageType'), t('export.csv.status'),
@@ -639,7 +646,7 @@ function groupByParent(nodes: SitemapNode[]): Map<string | null, SitemapNode[]> 
 }
 
 export function documentToMarkdown(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
-    const t = (key: string) => translations[locale][key] ?? key;
+    const t = (key: TranslationKey) => translations[locale][key];
     const childrenByParent = groupByParent(document.nodes);
     const lines: string[] = [`# ${document.project.name}`, ''];
     if (document.project.client) lines.push(`${t('export.client')}: ${document.project.client}`);
@@ -667,7 +674,7 @@ export function documentToMarkdown(document: SitemapDocument, locale: Locale = D
 }
 
 export function documentToHtml(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
-    const t = (key: string) => translations[locale][key] ?? key;
+    const t = (key: TranslationKey) => translations[locale][key];
     const childrenByParent = groupByParent(document.nodes);
     const escape = (value: string) => value.replace(/[<>&]/g, (char) => ({
         '<': '&lt;', '>': '&gt;', '&': '&amp;',
@@ -738,53 +745,93 @@ export function createNodeId() {
 export function layoutNodes(
     nodes: SitemapNode[],
     direction: LayoutDirection,
+    measuredSizes: Record<string, CardSize> = {},
 ): SitemapLayout {
+    const cardSizes = Object.fromEntries(nodes.map((node) => [node.id, {
+        width: CARD_WIDTH,
+        height: measuredSizes[node.id]?.height ?? DEFAULT_CARD_HEIGHT,
+    }]));
     const positions: Record<string, Position> = {};
     const children = new Map<string | null, SitemapNode[]>();
+    nodes.forEach((node) => children.set(node.parentId, [...(children.get(node.parentId) ?? []), node]));
 
-    nodes.forEach((node) => {
-        children.set(node.parentId, [
-            ...(children.get(node.parentId) ?? []),
-            node,
-        ]);
-    });
-
-    let nextRow = 0;
-
-    const visit = (node: SitemapNode, depth: number): number => {
-        const childNodes = children.get(node.id) ?? [];
-        const childRows = childNodes.map((child) => visit(child, depth + 1));
-        const row = childRows.length
-            ? (childRows[0] + childRows[childRows.length - 1]) / 2
-            : nextRow++;
-
-        positions[node.id] = direction === 'horizontal'
-            ? {
+    if (direction === 'horizontal') {
+        const subtreeHeight = new Map<string, number>();
+        const measure = (node: SitemapNode): number => {
+            const childNodes = children.get(node.id) ?? [];
+            const childrenHeight = childNodes.reduce((total, child) => total + measure(child), 0) + Math.max(0, childNodes.length - 1) * ROW_GAP;
+            const height = Math.max(cardSizes[node.id].height, childrenHeight);
+            subtreeHeight.set(node.id, height);
+            return height;
+        };
+        const place = (node: SitemapNode, depth: number, top: number) => {
+            const childNodes = children.get(node.id) ?? [];
+            const childrenHeight = childNodes.reduce((total, child) => total + (subtreeHeight.get(child.id) ?? 0), 0) + Math.max(0, childNodes.length - 1) * ROW_GAP;
+            positions[node.id] = {
                 x: 48 + depth * (CARD_WIDTH + COLUMN_GAP),
-                y: 42 + row * (CARD_HEIGHT + ROW_GAP),
-            }
-            : {
-                x: 48 + row * (CARD_WIDTH + ROW_GAP),
-                y: 42 + depth * (CARD_HEIGHT + VERTICAL_LEVEL_GAP),
+                y: top + ((subtreeHeight.get(node.id) ?? 0) - cardSizes[node.id].height) / 2,
             };
+            let childTop = top + ((subtreeHeight.get(node.id) ?? 0) - childrenHeight) / 2;
+            childNodes.forEach((child) => {
+                place(child, depth + 1, childTop);
+                childTop += (subtreeHeight.get(child.id) ?? 0) + ROW_GAP;
+            });
+        };
+        let top = 42;
+        (children.get(null) ?? []).forEach((root) => {
+            const height = measure(root);
+            place(root, 0, top);
+            top += height + ROW_GAP;
+        });
+    } else {
+        const depthById = new Map<string, number>();
+        const setDepth = (node: SitemapNode, depth: number) => {
+            depthById.set(node.id, depth);
+            (children.get(node.id) ?? []).forEach((child) => setDepth(child, depth + 1));
+        };
+        (children.get(null) ?? []).forEach((root) => setDepth(root, 0));
+        const levelHeights = new Map<number, number>();
+        nodes.forEach((node) => {
+            const depth = depthById.get(node.id) ?? 0;
+            levelHeights.set(depth, Math.max(levelHeights.get(depth) ?? 0, cardSizes[node.id].height));
+        });
+        const levelY = new Map<number, number>();
+        let y = 42;
+        [...levelHeights.keys()].sort((a, b) => a - b).forEach((depth) => {
+            levelY.set(depth, y);
+            y += (levelHeights.get(depth) ?? 0) + VERTICAL_LEVEL_GAP;
+        });
+        const subtreeWidth = new Map<string, number>();
+        const measure = (node: SitemapNode): number => {
+            const childNodes = children.get(node.id) ?? [];
+            const childrenWidth = childNodes.reduce((total, child) => total + measure(child), 0) + Math.max(0, childNodes.length - 1) * ROW_GAP;
+            const width = Math.max(CARD_WIDTH, childrenWidth);
+            subtreeWidth.set(node.id, width);
+            return width;
+        };
+        const place = (node: SitemapNode, left: number) => {
+            const childNodes = children.get(node.id) ?? [];
+            const childrenWidth = childNodes.reduce((total, child) => total + (subtreeWidth.get(child.id) ?? 0), 0) + Math.max(0, childNodes.length - 1) * ROW_GAP;
+            positions[node.id] = {
+                x: left + ((subtreeWidth.get(node.id) ?? 0) - CARD_WIDTH) / 2,
+                y: levelY.get(depthById.get(node.id) ?? 0) ?? 42,
+            };
+            let childLeft = left + ((subtreeWidth.get(node.id) ?? 0) - childrenWidth) / 2;
+            childNodes.forEach((child) => {
+                place(child, childLeft);
+                childLeft += (subtreeWidth.get(child.id) ?? 0) + ROW_GAP;
+            });
+        };
+        let left = 48;
+        (children.get(null) ?? []).forEach((root) => {
+            measure(root);
+            place(root, left);
+            left += (subtreeWidth.get(root.id) ?? 0) + ROW_GAP;
+        });
+    }
 
-        return row;
-    };
-
-    (children.get(null) ?? []).forEach((root) => visit(root, 0));
-
-    const maxX = Math.max(
-        0,
-        ...Object.values(positions).map((position) => position.x),
-    );
-    const maxY = Math.max(
-        0,
-        ...Object.values(positions).map((position) => position.y),
-    );
-
-    return {
-        positions,
-        width: maxX + CARD_WIDTH + 80,
-        height: maxY + CARD_HEIGHT + 80,
-    };
+    const positionedNodes = nodes.filter((node) => positions[node.id]);
+    const width = Math.max(0, ...positionedNodes.map((node) => positions[node.id].x + cardSizes[node.id].width)) + 80;
+    const height = Math.max(0, ...positionedNodes.map((node) => positions[node.id].y + cardSizes[node.id].height)) + 80;
+    return {positions, cardSizes, width, height};
 }

@@ -1,6 +1,6 @@
-type Dict = Record<string, string>;
+import type {TranslationKey} from '@/lib/i18n/de.ts';
 
-export const en: Dict = {
+export const en: Record<TranslationKey, string> = {
     // common
     'common.cancel': 'Cancel',
     'common.confirm': 'Confirm',
@@ -42,8 +42,10 @@ export const en: Dict = {
     'validation.parentMissing': 'Parent page is missing',
     'validation.seoTitleMissing': 'SEO title missing',
     'validation.seoTitleTooLong': 'SEO title is longer than 60 characters',
+    'validation.seoTitleDuplicate': 'SEO title is duplicated',
     'validation.seoDescriptionMissing': 'SEO description missing',
     'validation.seoDescriptionTooLong': 'SEO description is longer than 160 characters',
+    'validation.hierarchyTooDeep': 'Page is more than 3 levels deep',
 
     // project templates
     'template.empty.title': 'Empty sitemap',
@@ -223,6 +225,8 @@ export const en: Dict = {
     'workspace.filter.seoLabel': 'SEO',
     'workspace.clearFilters': '{{count}} filters ×',
     'workspace.qualityCheck': 'Quality check',
+    'workspace.presentationMode': 'Present',
+    'workspace.exitPresentationMode': 'Exit presentation',
     'workspace.viewLabel': 'View',
     'workspace.canvasView': 'Canvas',
     'workspace.tableView': 'Table',

@@ -1,5 +1,5 @@
 import type {ImportedPage} from '@/gen/app.ts';
-import {DEFAULT_LOCALE, type Locale, translations} from '@/lib/i18n/translations.ts';
+import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from '@/lib/i18n/translations.ts';
 import {
     normalizeDocument,
     type PageType,
@@ -78,7 +78,7 @@ export function createImportedDocument(
     baseUrl: string,
     locale: Locale = DEFAULT_LOCALE,
 ): SitemapDocument {
-    const t = (key: string) => translations[locale][key] ?? key;
+    const t = (key: TranslationKey) => translations[locale][key];
     const selected = pages.filter(({selected}) => selected);
     const usedIds = new Set<string>();
     const idByPath = new Map<string, string>();

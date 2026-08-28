@@ -51,7 +51,7 @@ export function CardContextMenu({
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="size-6 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-primary"
+                    className="size-4 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-primary"
                     aria-label={t('cardMenu.aria')}
                     title={t('cardMenu.aria')}
                     onClick={(event) => event.stopPropagation()}

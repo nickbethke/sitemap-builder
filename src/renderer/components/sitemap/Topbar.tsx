@@ -20,31 +20,33 @@ type TopbarProps = {
 };
 
 export function Topbar({
-    projectName,
-    dirty,
-    theme,
-    onProjectNameChange,
-    onThemeToggle,
-    onOpen,
-    onImport,
-    onSave,
-    onUndo,
-    onRedo,
-    canUndo,
-    canRedo,
-}: TopbarProps) {
+                           projectName,
+                           dirty,
+                           theme,
+                           onProjectNameChange,
+                           onThemeToggle,
+                           onOpen,
+                           onImport,
+                           onSave,
+                           onUndo,
+                           onRedo,
+                           canUndo,
+                           canRedo,
+                       }: TopbarProps) {
     const {locale, setLocale, t} = useTranslation();
 
     return (
-        <header className="z-20 col-span-full grid grid-cols-[214px_minmax(240px,1fr)_auto] items-center border-b border-border bg-[hsl(var(--panel)/.94)] shadow-[0_1px_12px_hsl(var(--foreground)/.05)] backdrop-blur-xl [-webkit-app-region:drag] max-[1180px]:grid-cols-[180px_minmax(160px,1fr)_auto]">
-            <div className="flex h-full items-center gap-3 border-r border-border px-4 text-foreground max-[1180px]:pl-3">
-                <div className="grid size-9 place-items-center rounded-md bg-primary/10 ring-1 ring-primary/15">
+        <header
+            className="z-20 col-span-full grid grid-cols-[214px_minmax(240px,1fr)_auto] items-center border-b border-border bg-[hsl(var(--panel)/.94)] shadow-[0_1px_12px_hsl(var(--foreground)/.05)] backdrop-blur-xl [-webkit-app-region:drag] max-[1180px]:grid-cols-[180px_minmax(160px,1fr)_auto]">
+            <div
+                className="flex h-full items-center gap-3 border-r border-border px-4 text-foreground max-[1180px]:pl-3">
+                <div className="grid size-9 place-items-center">
                     <img src="/logo.svg?v=blueprint" alt="" className="size-full"/>
                 </div>
                 <div className="whitespace-nowrap">
                     <strong className="block text-sm">Sitemap Builder</strong>
-                    <span className="mt-px block text-[9px] uppercase tracking-[.18em] text-muted-foreground">
-                        Blueprint Studio
+                    <span className="mt-px block text-[9px] tracking-[.18em] text-muted-foreground">
+                        krawallstudio
                     </span>
                 </div>
             </div>
@@ -53,6 +55,7 @@ export function Topbar({
                 <Input
                     className="h-8 border-0 bg-transparent px-2 text-center text-sm font-semibold shadow-none [-webkit-app-region:no-drag] focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
                     value={projectName}
+                    placeholder={t('topbar.projectName')}
                     aria-label={t('topbar.projectName')}
                     onChange={(event) => onProjectNameChange(event.target.value)}
                 />
@@ -64,10 +67,12 @@ export function Topbar({
             </div>
 
             <div className="flex items-center gap-2 pr-4 [&_button]:h-9 [&_button]:gap-2">
-                <Button variant="ghost" size="icon" aria-label={t('topbar.undo')} title={t('topbar.undo')} disabled={!canUndo} onClick={onUndo}>
+                <Button variant="ghost" size="icon" aria-label={t('topbar.undo')} title={t('topbar.undo')}
+                        disabled={!canUndo} onClick={onUndo}>
                     <Undo2 size={17}/>
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={t('topbar.redo')} title={t('topbar.redo')} disabled={!canRedo} onClick={onRedo}>
+                <Button variant="ghost" size="icon" aria-label={t('topbar.redo')} title={t('topbar.redo')}
+                        disabled={!canRedo} onClick={onRedo}>
                     <Redo2 size={17}/>
                 </Button>
                 <Button
@@ -91,7 +96,8 @@ export function Topbar({
                         : <Moon size={17}/>
                     }
                 </Button>
-                <Button variant="ghost" size="icon" aria-label={t('topbar.importWebsite')} title={t('topbar.importWebsite')} onClick={onImport}>
+                <Button variant="ghost" size="icon" aria-label={t('topbar.importWebsite')}
+                        title={t('topbar.importWebsite')} onClick={onImport}>
                     <FolderInput size={17}/>
                 </Button>
                 <Button variant="outline" size="sm" onClick={onOpen}>
