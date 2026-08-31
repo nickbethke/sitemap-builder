@@ -149,6 +149,12 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     };
     const activeFilterCount = [statusFilter, typeFilter, ownerFilter, importanceFilter].filter((value) => value !== 'all').length;
 
+    const focusIssueNode = (nodeId: string) => {
+        onSelectNode(nodeId);
+        setView('canvas');
+        requestAnimationFrame(() => requestAnimationFrame(() => canvasViewRef.current?.focusNode(nodeId)));
+    };
+
     const startIssuesResize = (event: ReactPointerEvent<HTMLDivElement>) => {
         event.preventDefault();
         const handle = event.currentTarget;
@@ -405,7 +411,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                         variant="ghost"
                                         className="grid h-auto min-h-8 w-full grid-cols-[8px_150px_1fr_60px] items-center justify-start gap-2 rounded-none border-b border-border px-3 text-left text-[9px] font-normal text-muted-foreground hover:bg-accent/60 hover:text-foreground"
                                         key={`${issue.nodeId}-${index}`}
-                                        onClick={() => onSelectNode(issue.nodeId)}
+                                        onClick={() => focusIssueNode(issue.nodeId)}
                                     >
                                         <i className={cn('size-1.5 rounded-full bg-amber-500', issue.level === 'error' && 'bg-destructive')}/>
                                         <b className="truncate text-foreground">{node?.title}</b>
