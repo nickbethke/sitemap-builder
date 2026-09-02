@@ -201,7 +201,7 @@ export function SitemapCard({
 
             {childCount > 0 && (
                 <div className={cn(
-                    'absolute -right-3 top-1/2 flex h-6 min-w-5 -translate-y-1/2 items-center justify-center gap-0 rounded-lg  border border-primary/30 bg-primary text-white px-2 text-[9px] font-semibold shadow-sm [&_svg]:size-3 [&_svg]:shrink-0 [&_svg]:-rotate-90',
+                    'absolute -right-3 top-1/2 flex h-6 min-w-5 -translate-y-1/2 items-center justify-center gap-0 rounded-lg  border border-primary/30 bg-primary text-primary-foreground px-2 text-[9px] font-semibold shadow-sm [&_svg]:size-3 [&_svg]:shrink-0 [&_svg]:-rotate-90',
                     layoutDirection === 'vertical' && '-bottom-3 left-1/2 right-auto top-auto -translate-x-1/2 translate-y-0 [&_svg]:rotate-0',
                 )}>
                     <span>{childCount}</span>
