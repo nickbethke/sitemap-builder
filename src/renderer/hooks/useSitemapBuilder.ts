@@ -3,6 +3,7 @@ import {ipc} from '@/gen/ipc';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {createImportedDocument, type ImportPreviewPage} from '@/lib/import.ts';
 import {
+    createChildSlug,
     createNodeId,
     createProjectDocument,
     documentToCsv,
@@ -297,18 +298,14 @@ export function useSitemapBuilder() {
         }));
     };
 
-    const addChild = (parentId: string | null = selectedId || null) => {
-        const id = createNodeId();
+    const addChild = (title: string, parentId: string | null = selectedId || null) => {
         const parent = document.nodes.find((node) => node.id === parentId);
-        const slugBase = parent?.slug === '/'
-            ? ''
-            : (parent?.slug ?? '');
         const node: SitemapNode = {
-            id,
+            id: createNodeId(),
             parentId,
-            title: t('node.defaultTitle'),
+            title,
             description: '',
-            slug: `${slugBase}/${t('node.defaultSlug')}`,
+            slug: createChildSlug(parent?.slug ?? '/', title),
             pageType: 'content',
             seoImportance: 'medium',
             status: 'planned',
@@ -318,6 +315,7 @@ export function useSitemapBuilder() {
             seoTitle: '',
             seoDescription: '',
             notes: '',
+            showInMainNavigation: true,
         };
 
         mutateDocument((current) => ({
@@ -584,7 +582,7 @@ export function useSitemapBuilder() {
         })) return false;
 
         const nextDocument = createImportedDocument(pages, projectName, baseUrl, locale);
-        setDocument(nextDocument);
+        setDocument(normalizeDocument(nextDocument));
         setPast([]);
         setFuture([]);
         setSelectedId(nextDocument.nodes[0]?.id ?? '');

@@ -2,7 +2,7 @@ import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {cn} from '@/lib/utils.ts';
-import {FolderInput, FolderOpen, Moon, Redo2, Save, Sun, Undo2} from 'lucide-react';
+import {FolderInput, FolderOpen, Menu, Moon, Network, Redo2, Save, Sun, Undo2} from 'lucide-react';
 
 type TopbarProps = {
     projectName: string;
@@ -17,6 +17,8 @@ type TopbarProps = {
     onRedo: () => void;
     canUndo: boolean;
     canRedo: boolean;
+    workspaceMode: 'sitemap' | 'menu';
+    onWorkspaceModeChange: (mode: 'sitemap' | 'menu') => void;
 };
 
 export function Topbar({
@@ -32,6 +34,8 @@ export function Topbar({
                            onRedo,
                            canUndo,
                            canRedo,
+                           workspaceMode,
+                           onWorkspaceModeChange,
                        }: TopbarProps) {
     const {locale, setLocale, t} = useTranslation();
 
@@ -67,6 +71,14 @@ export function Topbar({
             </div>
 
             <div className="flex items-center gap-2 pr-4 [&_button]:h-9 [&_button]:gap-2">
+                <div className="flex overflow-hidden rounded-md border border-border bg-background [-webkit-app-region:no-drag] [&_button]:rounded-none [&_button]:border-0">
+                    <Button variant="ghost" size="sm" className={cn(workspaceMode === 'sitemap' && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground')} onClick={() => onWorkspaceModeChange('sitemap')}>
+                        <Network size={14}/>{t('topbar.sitemapMode')}
+                    </Button>
+                    <Button variant="ghost" size="sm" className={cn(workspaceMode === 'menu' && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground')} onClick={() => onWorkspaceModeChange('menu')}>
+                        <Menu size={14}/>{t('topbar.menuMode')}
+                    </Button>
+                </div>
                 <Button variant="ghost" size="icon" aria-label={t('topbar.undo')} title={t('topbar.undo')}
                         disabled={!canUndo} onClick={onUndo}>
                     <Undo2 size={17}/>

@@ -86,6 +86,8 @@ export const de = {
     'topbar.importWebsite': 'Bestehende Website importieren',
     'topbar.open': 'Öffnen',
     'topbar.save': 'Speichern',
+    'topbar.sitemapMode': 'Sitemap',
+    'topbar.menuMode': 'Menü',
 
     // common (extra)
     'common.delete': 'Löschen',
@@ -209,6 +211,13 @@ export const de = {
     'newSitemap.create': 'Sitemap erstellen',
     'newSitemap.defaultName': 'Neue Sitemap',
 
+    // new page dialog
+    'newPage.title': 'Unterseite erstellen',
+    'newPage.description': 'Name eingeben. Slug wird automatisch unter „{{parent}}“ erstellt.',
+    'newPage.name': 'Seitenname',
+    'newPage.slug': 'Slug / URL',
+    'newPage.create': 'Seite erstellen',
+
     // workspace
     'workspace.searchPlaceholder': 'Seiten durchsuchen …',
     'workspace.pageCount': '{{count}} Seiten',
@@ -230,6 +239,7 @@ export const de = {
     'workspace.tableView': 'Tabelle',
     'workspace.treeView': 'Baumansicht',
     'workspace.kanbanView': 'Kanban-Ansicht',
+    'workspace.menuPreviewView': 'Menü-Vorschau',
     'tree.expand': 'Unterseiten einblenden',
     'tree.collapse': 'Unterseiten ausblenden',
     'workspace.layoutLabel': 'Darstellung',
@@ -260,6 +270,31 @@ export const de = {
     'workspace.levelWarning': 'Warnung',
     'workspace.noFileYet': 'Noch keine .smap-Datei',
 
+    // menu preview
+    'menuPreview.eyebrow': 'Navigation testen',
+    'menuPreview.title': 'Menü-Vorschau',
+    'menuPreview.description': 'Sitemap als Hauptmenü-Demo für Desktop und Mobil.',
+    'menuPreview.depth': 'Menütiefe',
+    'menuPreview.depthValue': '{{count}} Ebenen',
+    'menuPreview.menuType': 'Menütyp',
+    'menuPreview.typeDropdown': 'Dropdown',
+    'menuPreview.typeMega': 'Mega-Menü',
+    'menuPreview.typeAccordion': 'Akkordeon',
+    'menuPreview.cta': 'Kontakt',
+    'menuPreview.demoNote': 'Statische Vorschau – Navigation ist deaktiviert.',
+    'menuPreview.mobile': 'Mobile Menü-Demo',
+    'menuPreview.editStructure': 'Menüstruktur bearbeiten',
+    'menuPreview.pages': 'Seiten',
+    'menuPreview.menuStructure': 'Menüstruktur',
+    'menuPreview.connectHint': 'Seite wählen, dann per Stift-Verbindung im Menü einfügen.',
+    'menuPreview.connectHere': 'Als Untermenü verknüpfen',
+    'menuPreview.addTopLevel': 'Hauptebene',
+
+    // menu canvas
+    'menuCanvas.title': 'Menü-Editor',
+    'menuCanvas.description': 'Stift auf Parent setzen, dann Zielseite wählen.',
+    'menuCanvas.drawingHint': 'Zielseite für neue Menüverknüpfung wählen.',
+
     // inspector
     'inspector.noPageSelected': 'Keine Seite ausgewählt',
     'inspector.projectSettings': 'Projekteinstellungen',
@@ -277,6 +312,8 @@ export const de = {
     'inspector.pageType': 'Seitentyp',
     'inspector.status': 'Status',
     'inspector.owner': 'Verantwortlich',
+    'inspector.mainNavigation.title': 'Im Hauptmenü anzeigen',
+    'inspector.mainNavigation.description': 'Zeigt diese Seite in Menü-Vorschau und ihren Untermenüs.',
     'inspector.section.seo': 'SEO',
     'inspector.seoTitle': 'SEO-Titel',
     'inspector.seoDescription': 'SEO-Beschreibung',

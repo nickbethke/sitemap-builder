@@ -1,6 +1,7 @@
 import {CanvasView, type CanvasViewHandle} from '@/components/sitemap/CanvasView.tsx';
 import {TableView} from '@/components/sitemap/TableView.tsx';
 import {KanbanView} from '@/components/sitemap/KanbanView.tsx';
+import {MenuPreviewView, type MenuType} from '@/components/sitemap/MenuPreviewView.tsx';
 import {TreeView} from '@/components/sitemap/TreeView.tsx';
 import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
@@ -27,8 +28,9 @@ import {
     Network,
     X,
     MonitorPlay,
-    PanelsTopLeft,
-    ListTree,
+    Columns3,
+    GitFork,
+
 } from 'lucide-react';
 import {
     type DragEvent,
@@ -70,6 +72,7 @@ type WorkspaceProps = {
     onExportPdf: (base64: string) => void;
     presentationMode: boolean;
     onPresentationModeChange: (enabled: boolean) => void;
+    workspaceMode: 'sitemap' | 'menu';
 };
 
 export type WorkspaceHandle = {
@@ -109,9 +112,12 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                                                                             onExportPdf,
                                                                                             presentationMode,
                                                                                             onPresentationModeChange,
+                                                                                            workspaceMode,
                                                                                         }: WorkspaceProps, ref) {
     const {t} = useTranslation();
-    const [view, setView] = useState<'canvas' | 'table' | 'tree' | 'kanban'>('canvas');
+    const [view, setView] = useState<'canvas' | 'table' | 'tree' | 'kanban' | 'menu'>('canvas');
+    const [menuDepth, setMenuDepth] = useState(2);
+    const [menuType, setMenuType] = useState<MenuType>('dropdown');
     const [statusFilter, setStatusFilter] = useState('all');
     const [typeFilter, setTypeFilter] = useState('all');
     const [ownerFilter, setOwnerFilter] = useState('all');
@@ -140,6 +146,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     useEffect(() => {
         localStorage.setItem('issues-panel-height', String(Math.round(issuesHeight)));
     }, [issuesHeight]);
+
 
     const clearFilters = () => {
         setStatusFilter('all');
@@ -183,7 +190,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
             {!presentationMode && <div
                 className="z-4 flex items-center justify-between border-b border-border bg-[hsl(var(--panel)/.82)] px-3.5 backdrop-blur-md">
                 <div
-                    className="flex h-8 w-52 items-center gap-2 rounded-md border border-border bg-background px-2 text-muted-foreground">
+                    className={cn('flex h-8 w-52 items-center gap-2 rounded-md border border-border bg-background px-2 text-muted-foreground', workspaceMode === 'menu' && 'invisible')}>
                     <Search size={15}/>
                     <Input
                         className="h-auto w-full border-0 bg-transparent p-0 text-xs text-foreground shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -195,7 +202,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
 
                 <div className="flex items-center gap-2.5 [&>button]:h-8 [&>button]:gap-1.5 [&>button]:text-xs">
                     <span
-                        className="text-[10px] text-muted-foreground">{t('workspace.pageCount', {count: document.nodes.length})}</span>
+                        className={cn('text-[10px] text-muted-foreground', workspaceMode === 'menu' && 'hidden')}>{t('workspace.pageCount', {count: document.nodes.length})}</span>
                     {view === 'table' && (
                         <>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -257,7 +264,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                     )}
                     <Button
                         variant="ghost"
-                        className={cn('gap-1 border border-border bg-background px-2 text-muted-foreground', issues.length > 0 && 'border-amber-500/40 bg-amber-500/10 text-amber-600')}
+                        className={cn('gap-1 border border-border bg-background px-2 text-muted-foreground', workspaceMode === 'menu' && 'hidden', issues.length > 0 && 'border-amber-500/40 bg-amber-500/10 text-amber-600')}
                         onClick={() => setShowIssues(!showIssues)}
                         title={t('workspace.qualityCheck')}
                     >
@@ -271,7 +278,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                     >
                         <MonitorPlay size={15}/>{t('workspace.presentationMode')}
                     </Button>
-                    <div className={layoutControlsClass} aria-label={t('workspace.viewLabel')}>
+                    {workspaceMode === 'sitemap' && <div className="ml-auto order-last flex items-center gap-2">
+                        <span className="h-5 w-px bg-border" aria-hidden="true"/>
+                        <div className={layoutControlsClass} aria-label={t('workspace.viewLabel')}>
                         <Button variant="ghost"
                                 className={cn(layoutButtonClass, view === 'canvas' && 'bg-accent text-primary')}
                                 aria-label={t('workspace.canvasView')} onClick={() => setView('canvas')}>
@@ -283,13 +292,14 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                             <Table2 size={15}/>
                         </Button>
                         <Button variant="ghost" className={cn(layoutButtonClass, view === 'tree' && 'bg-accent text-primary')} aria-label={t('workspace.treeView')} title={t('workspace.treeView')} onClick={() => setView('tree')}>
-                            <ListTree size={15}/>
+                            <GitFork size={15}/>
                         </Button>
                         <Button variant="ghost" className={cn(layoutButtonClass, view === 'kanban' && 'bg-accent text-primary')} aria-label={t('workspace.kanbanView')} title={t('workspace.kanbanView')} onClick={() => setView('kanban')}>
-                            <PanelsTopLeft size={15}/>
+                            <Columns3 size={15}/>
                         </Button>
-                    </div>
-                    {view === 'canvas' && (
+                        </div>
+                    </div>}
+                    {workspaceMode === 'sitemap' && view === 'canvas' && (
                         <>
                             <div className={layoutControlsClass} aria-label={t('workspace.layoutLabel')}>
                                 <Button
@@ -348,7 +358,9 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 </div>
             </div>}
 
-            {!presentationMode && view === 'tree' ? (
+            {workspaceMode === 'menu' || view === 'menu' ? (
+                <MenuPreviewView document={document} depth={menuDepth} menuType={menuType} onDepthChange={setMenuDepth} onMenuTypeChange={setMenuType}/>
+            ) : !presentationMode && view === 'tree' ? (
                 <TreeView document={document} selectedId={selectedId} draggedId={draggedId} dropTargetId={dropTargetId} onSelectNode={onSelectNode} onMoveNode={onDropNode} canMoveTo={canMoveTo} onDraggedNodeChange={onDraggedNodeChange} onDropTargetChange={onDropTargetChange}/>
             ) : !presentationMode && view === 'kanban' ? (
                 <KanbanView nodes={document.nodes.filter((node) => visibleNodeIds.has(node.id))} selectedId={selectedId} onSelectNode={onSelectNode} onUpdateStatus={(nodeId, status) => onUpdateNode(nodeId, 'status', status)}/>
@@ -426,12 +438,14 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
 
             {presentationMode ? (
                 <div className="absolute right-5 top-5 z-10 flex overflow-hidden rounded-md border border-border bg-[hsl(var(--panel)/.88)] shadow-md backdrop-blur [&>button]:rounded-none">
-                    <Button variant="secondary" size="icon" className={cn(layoutDirection === 'horizontal' && '!bg-primary !text-primary-foreground')} aria-label={t('workspace.layoutHorizontal')} title={t('workspace.layoutHorizontal')} onClick={() => onLayoutDirectionChange('horizontal')}>
-                        <MoveHorizontal size={15}/>
-                    </Button>
-                    <Button variant="secondary" size="icon" className={cn(layoutDirection === 'vertical' && '!bg-primary !text-primary-foreground')} aria-label={t('workspace.layoutVertical')} title={t('workspace.layoutVertical')} onClick={() => onLayoutDirectionChange('vertical')}>
-                        <MoveVertical size={15}/>
-                    </Button>
+                    {workspaceMode === 'sitemap' && <>
+                        <Button variant="secondary" size="icon" className={cn(layoutDirection === 'horizontal' && '!bg-primary !text-primary-foreground')} aria-label={t('workspace.layoutHorizontal')} title={t('workspace.layoutHorizontal')} onClick={() => onLayoutDirectionChange('horizontal')}>
+                            <MoveHorizontal size={15}/>
+                        </Button>
+                        <Button variant="secondary" size="icon" className={cn(layoutDirection === 'vertical' && '!bg-primary !text-primary-foreground')} aria-label={t('workspace.layoutVertical')} title={t('workspace.layoutVertical')} onClick={() => onLayoutDirectionChange('vertical')}>
+                            <MoveVertical size={15}/>
+                        </Button>
+                    </>}
                     <Button variant="secondary" size="sm" className="border-l border-border" onClick={() => onPresentationModeChange(false)}>
                         <X size={15}/>{t('workspace.exitPresentationMode')}
                     </Button>

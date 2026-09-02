@@ -88,6 +88,8 @@ export const en: Record<TranslationKey, string> = {
     'topbar.importWebsite': 'Import existing website',
     'topbar.open': 'Open',
     'topbar.save': 'Save',
+    'topbar.sitemapMode': 'Sitemap',
+    'topbar.menuMode': 'Menu',
 
     // common (extra)
     'common.delete': 'Delete',
@@ -211,6 +213,13 @@ export const en: Record<TranslationKey, string> = {
     'newSitemap.create': 'Create sitemap',
     'newSitemap.defaultName': 'New sitemap',
 
+    // new page dialog
+    'newPage.title': 'Create subpage',
+    'newPage.description': 'Enter a name. Slug will be created automatically under "{{parent}}".',
+    'newPage.name': 'Page name',
+    'newPage.slug': 'Slug / URL',
+    'newPage.create': 'Create page',
+
     // workspace
     'workspace.searchPlaceholder': 'Search pages …',
     'workspace.pageCount': '{{count}} pages',
@@ -232,6 +241,7 @@ export const en: Record<TranslationKey, string> = {
     'workspace.tableView': 'Table',
     'workspace.treeView': 'Tree view',
     'workspace.kanbanView': 'Kanban view',
+    'workspace.menuPreviewView': 'Menu preview',
     'tree.expand': 'Expand subpages',
     'tree.collapse': 'Collapse subpages',
     'workspace.layoutLabel': 'Layout',
@@ -262,6 +272,31 @@ export const en: Record<TranslationKey, string> = {
     'workspace.levelWarning': 'Warning',
     'workspace.noFileYet': 'No .smap file yet',
 
+    // menu preview
+    'menuPreview.eyebrow': 'Test navigation',
+    'menuPreview.title': 'Menu preview',
+    'menuPreview.description': 'Sitemap as a main-menu demo for desktop and mobile.',
+    'menuPreview.depth': 'Menu depth',
+    'menuPreview.depthValue': '{{count}} levels',
+    'menuPreview.menuType': 'Menu type',
+    'menuPreview.typeDropdown': 'Dropdown',
+    'menuPreview.typeMega': 'Mega menu',
+    'menuPreview.typeAccordion': 'Accordion',
+    'menuPreview.cta': 'Contact',
+    'menuPreview.demoNote': 'Static preview – navigation is disabled.',
+    'menuPreview.mobile': 'Mobile menu demo',
+    'menuPreview.editStructure': 'Edit menu structure',
+    'menuPreview.pages': 'Pages',
+    'menuPreview.menuStructure': 'Menu structure',
+    'menuPreview.connectHint': 'Select a page, then add it to menu with a pen connection.',
+    'menuPreview.connectHere': 'Link as submenu',
+    'menuPreview.addTopLevel': 'Top level',
+
+    // menu canvas
+    'menuCanvas.title': 'Menu editor',
+    'menuCanvas.description': 'Set pen on parent, then choose target page.',
+    'menuCanvas.drawingHint': 'Choose target page for new menu link.',
+
     // inspector
     'inspector.noPageSelected': 'No page selected',
     'inspector.projectSettings': 'Project settings',
@@ -279,6 +314,8 @@ export const en: Record<TranslationKey, string> = {
     'inspector.pageType': 'Page type',
     'inspector.status': 'Status',
     'inspector.owner': 'Owner',
+    'inspector.mainNavigation.title': 'Show in main menu',
+    'inspector.mainNavigation.description': 'Shows this page in menu preview and its submenus.',
     'inspector.section.seo': 'SEO',
     'inspector.seoTitle': 'SEO title',
     'inspector.seoDescription': 'SEO description',

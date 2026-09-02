@@ -200,6 +200,18 @@ export function Inspector({
                             />
                         </label>
                     </div>
+
+                    <label className="flex flex-row items-start gap-2 rounded-lg border border-border bg-muted/40 p-3 text-[10px] font-semibold text-muted-foreground">
+                        <Checkbox
+                            className="mt-px"
+                            checked={selectedNode.showInMainNavigation !== false}
+                            onCheckedChange={(checked) => onUpdateNode('showInMainNavigation', checked === true)}
+                        />
+                        <span className="block">
+                            <strong className="block text-[10px] text-foreground">{t('inspector.mainNavigation.title')}</strong>
+                            <small className="mt-0.5 block font-normal leading-snug">{t('inspector.mainNavigation.description')}</small>
+                        </span>
+                    </label>
                 </AccordionSection>
 
                 <AccordionSection title={t('inspector.section.seo')} defaultOpen>

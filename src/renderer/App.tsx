@@ -1,5 +1,6 @@
 import {ImportWebsiteDialog} from '@/components/sitemap/ImportWebsiteDialog.tsx';
 import {Inspector} from '@/components/sitemap/Inspector.tsx';
+import {NewPageDialog} from '@/components/sitemap/NewPageDialog.tsx';
 import {NewSitemapDialog} from '@/components/sitemap/NewSitemapDialog.tsx';
 import {Topbar} from '@/components/sitemap/Topbar.tsx';
 import {Workspace, type WorkspaceHandle} from '@/components/sitemap/Workspace.tsx';
@@ -23,8 +24,10 @@ function App() {
 function SitemapBuilder() {
     const sitemap = useSitemapBuilder();
     const [newSitemapOpen, setNewSitemapOpen] = useState(false);
+    const [newPageParentId, setNewPageParentId] = useState<string | null>(null);
     const [importWebsiteOpen, setImportWebsiteOpen] = useState(false);
     const [presentationMode, setPresentationMode] = useState(false);
+    const [workspaceMode, setWorkspaceMode] = useState<'sitemap' | 'menu'>('sitemap');
     const workspaceRef = useRef<WorkspaceHandle>(null);
 
     const togglePresentationMode = (enabled: boolean) => setPresentationMode(enabled);
@@ -86,7 +89,9 @@ function SitemapBuilder() {
     return (
         <div className={presentationMode
             ? 'grid h-screen grid-cols-1 grid-rows-1 bg-background'
-            : 'grid h-screen grid-cols-[minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[minmax(500px,1fr)_285px]'}>
+            : workspaceMode === 'menu'
+                ? 'grid h-screen grid-cols-1 grid-rows-[70px_minmax(0,1fr)] bg-background'
+                : 'grid h-screen grid-cols-[minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[minmax(500px,1fr)_285px]'}>
             {!presentationMode && <Topbar
                 projectName={sitemap.document.project.name}
                 dirty={sitemap.dirty}
@@ -103,6 +108,8 @@ function SitemapBuilder() {
                 onRedo={sitemap.redo}
                 canUndo={sitemap.canUndo}
                 canRedo={sitemap.canRedo}
+                workspaceMode={workspaceMode}
+                onWorkspaceModeChange={setWorkspaceMode}
             />}
 
             <Workspace
@@ -119,7 +126,7 @@ function SitemapBuilder() {
                 onSearchChange={sitemap.setSearch}
                 onZoomChange={sitemap.setZoom}
                 onLayoutDirectionChange={sitemap.setLayoutDirection}
-                onAddChild={sitemap.addChild}
+                onAddChild={(parentId) => setNewPageParentId(parentId ?? sitemap.selectedId)}
                 onDuplicateNode={sitemap.duplicateNode}
                 onDeleteNode={sitemap.deleteNode}
                 onDeleteNodes={sitemap.deleteNodes}
@@ -135,9 +142,10 @@ function SitemapBuilder() {
                 onExportPdf={sitemap.exportPdf}
                 presentationMode={presentationMode}
                 onPresentationModeChange={togglePresentationMode}
+                workspaceMode={workspaceMode}
             />
 
-            {!presentationMode && <Inspector
+            {!presentationMode && workspaceMode === 'sitemap' && <Inspector
                 selectedNode={sitemap.selectedNode}
                 project={sitemap.document.project}
                 onProjectChange={sitemap.updateProject}
@@ -156,6 +164,20 @@ function SitemapBuilder() {
                     onCreate={sitemap.newProject}
                 />
             )}
+
+            {newPageParentId && (() => {
+                const parent = sitemap.document.nodes.find((node) => node.id === newPageParentId);
+                if (!parent) return null;
+                return <NewPageDialog
+                    parentTitle={parent.title}
+                    parentSlug={parent.slug}
+                    onClose={() => setNewPageParentId(null)}
+                    onCreate={(title) => {
+                        setNewPageParentId(null);
+                        sitemap.addChild(title, parent.id);
+                    }}
+                />;
+            })()}
 
             {importWebsiteOpen && (
                 <ImportWebsiteDialog

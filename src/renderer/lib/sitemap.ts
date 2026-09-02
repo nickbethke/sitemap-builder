@@ -35,6 +35,7 @@ export type SitemapNode = {
     seoTitle?: string;
     seoDescription?: string;
     notes: string;
+    showInMainNavigation?: boolean;
     redirectFrom?: string;
 };
 
@@ -151,6 +152,10 @@ export const SEO_IMPORTANCE_LEVELS: SeoImportance[] = [
     'low',
     'none',
 ];
+
+export function isMainNavigationDefault(node: Pick<SitemapNode, 'parentId' | 'pageType'>) {
+    return node.parentId !== null && !['legal', 'error', 'external'].includes(node.pageType);
+}
 
 export const starterDocument: SitemapDocument = {
     formatVersion: 1,
@@ -454,6 +459,7 @@ export const starterDocument: SitemapDocument = {
             template: 'Rechtliches',
             noIndex: false,
             notes: '',
+            showInMainNavigation: false,
         },
         {
             id: 'privacy',
@@ -468,20 +474,20 @@ export const starterDocument: SitemapDocument = {
             template: 'Rechtliches',
             noIndex: false,
             notes: '',
+            showInMainNavigation: false,
         },
     ],
 };
 
 export function normalizeDocument(document: SitemapDocument): SitemapDocument {
-    return {
-        ...document,
-        nodes: document.nodes.map((node) => ({
-            ...node,
-            seoTitle: node.seoTitle ?? '',
-            seoDescription: node.seoDescription ?? '',
-            redirectFrom: node.redirectFrom ?? '',
-        })),
-    };
+    const nodes = document.nodes.map((node) => ({
+        ...node,
+        seoTitle: node.seoTitle ?? '',
+        seoDescription: node.seoDescription ?? '',
+        redirectFrom: node.redirectFrom ?? '',
+        showInMainNavigation: node.showInMainNavigation ?? isMainNavigationDefault(node),
+    }));
+    return {...document, nodes};
 }
 
 export function createProjectDocument(
@@ -509,6 +515,7 @@ export function createProjectDocument(
         seoTitle: '',
         seoDescription: '',
         notes: '',
+        showInMainNavigation: isMainNavigationDefault({parentId, pageType}),
     });
     const root = node('home', null, 'Startseite', '/', 'home');
     let nodes: SitemapNode[] = [root];
@@ -736,6 +743,26 @@ export function documentToHtml(document: SitemapDocument, locale: Locale = DEFAU
 </body>
 </html>
 `;
+}
+
+export function slugify(value: string) {
+    return value
+        .trim()
+        .toLocaleLowerCase()
+        .replaceAll('ä', 'ae')
+        .replaceAll('ö', 'oe')
+        .replaceAll('ü', 'ue')
+        .replaceAll('ß', 'ss')
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+export function createChildSlug(parentSlug: string, title: string) {
+    const parent = parentSlug === '/' ? '' : parentSlug.replace(/\/+$/, '');
+    const segment = slugify(title);
+    return segment ? `${parent}/${segment}` : parent || '/';
 }
 
 export function createNodeId() {
