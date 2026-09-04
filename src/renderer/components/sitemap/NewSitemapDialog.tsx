@@ -16,7 +16,7 @@ import {useState} from 'react';
 
 type NewSitemapDialogProps = {
     onClose: () => void;
-    onCreate: (templateId: ProjectTemplateId, project: SitemapProject) => void;
+    onCreate: (templateId: ProjectTemplateId, project: SitemapProject) => Promise<boolean>;
 };
 
 const eyebrowClass = 'block text-[9px] font-bold uppercase tracking-widest text-muted-foreground';
@@ -30,10 +30,15 @@ export function NewSitemapDialog({onClose, onCreate}: NewSitemapDialogProps) {
         client: '',
         baseUrl: 'https://',
     });
+    const [creating, setCreating] = useState(false);
 
-    const create = () => {
-        onCreate(templateId, project);
-        onClose();
+    const create = async () => {
+        setCreating(true);
+        try {
+            if (await onCreate(templateId, project)) onClose();
+        } finally {
+            setCreating(false);
+        }
     };
 
     return (
@@ -89,7 +94,7 @@ export function NewSitemapDialog({onClose, onCreate}: NewSitemapDialogProps) {
 
                 <DialogFooter className="flex-row justify-end gap-2 border-t border-border px-5 py-4 [&_button]:h-9 [&_button]:text-xs">
                     <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
-                    <Button onClick={create} disabled={!project.name.trim()}>{t('newSitemap.create')}</Button>
+                    <Button onClick={() => void create()} disabled={!project.name.trim() || creating}>{t('newSitemap.create')}</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

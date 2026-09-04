@@ -255,6 +255,7 @@ export const en: Record<TranslationKey, string> = {
     'workspace.setStatusPlaceholder': 'Set status …',
     'workspace.clearSelection': 'Clear selection',
     'workspace.selectAllVisible': 'Select all visible pages',
+    'workspace.selectPageAria': 'Select page {{title}}',
     'workspace.col.page': 'Page',
     'workspace.col.url': 'URL',
     'workspace.col.type': 'Type',

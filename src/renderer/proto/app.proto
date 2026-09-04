@@ -8,7 +8,7 @@ message SetThemeRequest {
 
 message SaveSitemapRequest {
   string payload = 1;
-  string current_path = 2;
+  bool save_as = 2;
 }
 
 message SaveSitemapResponse {
@@ -27,6 +27,11 @@ message OpenSitemapResponse {
 message OpenedSitemap {
   string path = 1;
   string payload = 2;
+}
+
+message ResolveOpenedSitemapRequest {
+  string path = 1;
+  bool accepted = 2;
 }
 
 message ExportRequest {
@@ -94,9 +99,10 @@ service AppService {
   rpc SaveSitemap(SaveSitemapRequest) returns (SaveSitemapResponse);
   rpc OpenSitemap(OpenSitemapRequest) returns (OpenSitemapResponse);
   rpc GetStartupSitemap(google.protobuf.Empty) returns (OpenSitemapResponse);
+  rpc ResolveOpenedSitemap(ResolveOpenedSitemapRequest) returns (google.protobuf.Empty);
   rpc ExportFile(ExportRequest) returns (ExportResponse);
   rpc SelectAndParseXml(google.protobuf.Empty) returns (ImportXmlResponse);
-  rpc ParseXmlUrl(ImportXmlUrlRequest) returns (ImportXmlResponse);
+  rpc ParseXmlUrl(ImportXmlUrlRequest) returns (stream ImportXmlResponse);
   rpc EnrichImportedPages(EnrichImportRequest) returns (stream ImportProgress);
   rpc CrawlWebsite(CrawlRequest) returns (stream CrawlProgress);
 }

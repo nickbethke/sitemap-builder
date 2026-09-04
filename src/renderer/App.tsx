@@ -79,7 +79,8 @@ function SitemapBuilder() {
                         void sitemap.exportFile('html');
                         break;
                     case 'export-pdf':
-                        void workspaceRef.current?.exportPdf();
+                        setWorkspaceMode('sitemap');
+                        requestAnimationFrame(() => requestAnimationFrame(() => void workspaceRef.current?.exportPdf()));
                         break;
                 }
             },

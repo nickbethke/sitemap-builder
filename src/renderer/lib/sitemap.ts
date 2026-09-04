@@ -631,7 +631,11 @@ export function documentToXml(document: SitemapDocument): string {
 
 export function documentToCsv(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
     const t = (key: TranslationKey) => translations[locale][key];
-    const quote = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const quote = (value: unknown) => {
+        const text = String(value ?? '');
+        const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+        return `"${safe.replaceAll('"', '""')}"`;
+    };
     const header = [
         t('export.csv.title'), t('export.csv.url'), t('export.csv.pageType'), t('export.csv.status'),
         t('export.csv.seoImportance'), t('export.csv.owner'), t('export.csv.seoTitle'), t('export.csv.seoDescription'),
@@ -683,8 +687,8 @@ export function documentToMarkdown(document: SitemapDocument, locale: Locale = D
 export function documentToHtml(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
     const t = (key: TranslationKey) => translations[locale][key];
     const childrenByParent = groupByParent(document.nodes);
-    const escape = (value: string) => value.replace(/[<>&]/g, (char) => ({
-        '<': '&lt;', '>': '&gt;', '&': '&amp;',
+    const escape = (value: string) => value.replace(/[<>&'\"]/g, (char) => ({
+        '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&#39;', '"': '&quot;',
     })[char] ?? char);
 
     const renderList = (parentId: string | null): string => {
@@ -696,9 +700,9 @@ export function documentToHtml(document: SitemapDocument, locale: Locale = DEFAU
                 <div class="node">
                     <strong>${escape(node.title || t('export.untitled'))}</strong>
                     <code>${escape(node.slug || '/')}</code>
-                    <span class="badge badge-${node.status}">${escape(t(`pageStatus.${node.status}`))}</span>
+                    <span class="badge badge-${escape(node.status)}">${escape(t(`pageStatus.${node.status}`))}</span>
                     <span class="badge">${escape(t(`pageType.${node.pageType}`))}</span>
-                    <span class="badge badge-seo-${node.seoImportance}">${escape(t(`seoImportance.${node.seoImportance}`))}</span>
+                    <span class="badge badge-seo-${escape(node.seoImportance)}">${escape(t(`seoImportance.${node.seoImportance}`))}</span>
                     ${node.noIndex ? `<span class="badge badge-noindex">${escape(t('export.noIndexLabel'))}</span>` : ''}
                 </div>
                 ${renderList(node.id)}
@@ -712,6 +716,7 @@ export function documentToHtml(document: SitemapDocument, locale: Locale = DEFAU
 <html lang="${locale}">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:">
 <title>${escape(document.project.name)}${t('export.htmlTitleSuffix')}</title>
 <style>
   :root { color-scheme: light; }

@@ -253,6 +253,7 @@ export const de = {
     'workspace.setStatusPlaceholder': 'Status setzen …',
     'workspace.clearSelection': 'Auswahl aufheben',
     'workspace.selectAllVisible': 'Alle sichtbaren Seiten auswählen',
+    'workspace.selectPageAria': 'Seite {{title}} auswählen',
     'workspace.col.page': 'Seite',
     'workspace.col.url': 'URL',
     'workspace.col.type': 'Typ',

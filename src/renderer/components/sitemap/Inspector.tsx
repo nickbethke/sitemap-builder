@@ -307,7 +307,7 @@ export function Inspector({
                     <Copy size={15}/>
                     {t('inspector.duplicate')}
                 </Button>
-                <Button variant="outline" size="sm" disabled={selectedNode.parentId === null} onClick={onDelete}>
+                <Button variant="outline" size="sm" aria-label={t('common.delete')} title={t('common.delete')} disabled={selectedNode.parentId === null} onClick={onDelete}>
                     <Trash2 size={15}/>
                 </Button>
             </div>

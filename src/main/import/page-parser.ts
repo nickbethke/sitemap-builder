@@ -1,6 +1,6 @@
 import type {ImportedPage} from '../gen/app';
 import {load} from 'cheerio';
-import {assertSafeRemoteUrl, BROWSER_REQUEST_HEADERS} from './xml';
+import {BROWSER_REQUEST_HEADERS, fetchSafeRemote, type SafeResponse} from './xml';
 
 const MAX_HTML_SIZE = 2 * 1024 * 1024;
 const PAGE_TIMEOUT = 10_000;
@@ -11,7 +11,7 @@ export type InspectedPage = {
     links: string[];
 };
 
-async function readHtml(response: Response): Promise<string> {
+async function readHtml(response: SafeResponse): Promise<string> {
     const contentLength = Number(response.headers.get('content-length') ?? 0);
     if (contentLength > MAX_HTML_SIZE) throw new Error('HTML ist größer als 2 MB');
     if (!response.body) return '';
@@ -28,6 +28,7 @@ async function readHtml(response: Response): Promise<string> {
             chunks.push(value);
         }
     } finally {
+        if (total > MAX_HTML_SIZE) await reader.cancel();
         reader.releaseLock();
     }
     return Buffer.concat(chunks, total).toString('utf8');
@@ -60,8 +61,7 @@ export async function inspectImportedPage(
 
     try {
         for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
-            await assertSafeRemoteUrl(url);
-            const response = await fetch(url, {
+            const {response, close} = await fetchSafeRemote(url, {
                 redirect: 'manual',
                 signal: AbortSignal.any([signal, AbortSignal.timeout(PAGE_TIMEOUT)]),
                 headers: {
@@ -70,6 +70,7 @@ export async function inspectImportedPage(
                 },
             });
 
+            try {
             if (response.status >= 300 && response.status < 400) {
                 const location = response.headers.get('location');
                 if (!location) {
@@ -143,6 +144,10 @@ export async function inspectImportedPage(
                 finalUrl: url.href,
                 warnings,
             }, links);
+            } finally {
+                await response.body?.cancel();
+                await close();
+            }
         }
         return result({...page, finalUrl: url.href, warnings: [...warnings, `Mehr als ${MAX_REDIRECTS} Weiterleitungen`]});
     } catch (error) {

@@ -46,7 +46,7 @@
   - [x] Tabellenansicht aller Seiten
   - [x] Inline-Bearbeitung in der Tabellenansicht
   - [x] Sortierbare Tabellenspalten
-  - [x] Spaltenbreiten per Drag-and-drop ändern
+  - [ ] Spaltenbreiten per Drag-and-drop ändern
   - [x] Mehrfachauswahl und Bulk-Aktionen
   - [x] Baumansicht als Alternative zur Canvas
   - [x] Kanban-Ansicht nach Status

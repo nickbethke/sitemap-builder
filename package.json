@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "mobrowser dev",
-    "dev:build": "mobrowser dev:build",
-    "build": "mobrowser build",
+    "dev:build": "npm run typecheck && mobrowser dev:build",
+    "build": "npm run typecheck && npm test && mobrowser build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "pack": "mobrowser pack",
     "gen": "mobrowser gen",
     "add": "mobrowser add",
@@ -14,8 +16,7 @@
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
-    "@mobrowser/api": "2.14.1",
-    "@mobrowser/cli": "2.14.1",
+    "@mobrowser/api": "2.15.0",
     "@radix-ui/react-accordion": "^1.2.20",
     "@radix-ui/react-alert-dialog": "^1.1.23",
     "@radix-ui/react-checkbox": "^1.3.11",
@@ -35,23 +36,28 @@
     "fast-xml-parser": "^5.11.1",
     "fast-xml-validator": "^1.4.2",
     "html-to-image": "^1.11.13",
+    "ipaddr.js": "^2.5.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^0.503.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwind-merge": "^3.2.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "undici": "^7.29.1"
   },
   "optionalDependencies": {
-    "@mobrowser/sdk-darwin-arm64": "2.14.1",
-    "@mobrowser/sdk-linux-x64": "2.14.1",
-    "@mobrowser/sdk-win-x64": "2.14.1"
+    "@mobrowser/sdk-darwin-arm64": "2.15.0",
+    "@mobrowser/sdk-linux-x64": "2.15.0",
+    "@mobrowser/sdk-win-x64": "2.15.0"
   },
   "allowScripts": {
-    "@mobrowser/sdk-darwin-arm64@2.14.1": true,
+    "@mobrowser/sdk-darwin-arm64@2.15.0": true,
+    "@mobrowser/sdk-linux-x64@2.15.0": true,
+    "@mobrowser/sdk-win-x64@2.15.0": true,
     "fsevents@2.3.3": true
   },
   "devDependencies": {
+    "@mobrowser/cli": "^2.15.0",
     "@tailwindcss/postcss": "^4.1.2",
     "@types/node": "^20.11.5",
     "@types/react": "^19.1.2",

@@ -11,7 +11,7 @@ export type CanvasViewHandle = {
 
 type CanvasViewProps = {
     document: SitemapDocument; selectedId: string; draggedId: string | null; dropTargetId: string | null; search: string; zoom: number; layoutDirection: LayoutDirection; presentationMode: boolean;
-    onZoomChange: (zoom: number) => void; onSelectNode: (id: string) => void; onAddChild: (parentId?: string | null) => void; onDuplicateNode: (id: string) => void; onDeleteNode: (id: string) => void; onMoveNodeSibling: (id: string, direction: -1 | 1) => void; onMoveNodeUpLevel: (id: string) => void; onDraggedNodeChange: (id: string | null) => void; onDropTargetChange: (id: string | null) => void; canMoveTo: (nodeId: string, parentId: string) => boolean; onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void; onExportPdf: (base64: string) => void;
+    onZoomChange: (zoom: number) => void; onSelectNode: (id: string) => void; onAddChild: (parentId?: string | null) => void; onDuplicateNode: (id: string) => void; onDeleteNode: (id: string) => void; onMoveNodeSibling: (id: string, direction: -1 | 1) => void; onMoveNodeUpLevel: (id: string) => void; onDraggedNodeChange: (id: string | null) => void; onDropTargetChange: (id: string | null) => void; canMoveTo: (nodeId: string, parentId: string) => boolean; onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void; onExportPdf: (base64: string) => Promise<void>;
 };
 
 export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function CanvasView(props, ref) {
@@ -37,7 +37,7 @@ export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function
     }, [layout.positions, zoom]);
     useImperativeHandle(ref, () => ({
         exportPdf: async () => {
-            if (contentRef.current) onExportPdf(await captureCanvasAsPdfBase64(contentRef.current, layout.width, layout.height));
+            if (contentRef.current) await onExportPdf(await captureCanvasAsPdfBase64(contentRef.current, layout.width, layout.height));
         },
         focusNode,
     }), [focusNode, layout.height, layout.width, onExportPdf]);

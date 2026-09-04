@@ -69,7 +69,7 @@ type WorkspaceProps = {
     onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void;
     onUpdateNode: <K extends keyof SitemapNode>(nodeId: string, key: K, value: SitemapNode[K]) => void;
     onUpdateNodes: <K extends keyof SitemapNode>(nodeIds: string[], key: K, value: SitemapNode[K]) => void;
-    onExportPdf: (base64: string) => void;
+    onExportPdf: (base64: string) => Promise<void>;
     presentationMode: boolean;
     onPresentationModeChange: (enabled: boolean) => void;
     workspaceMode: 'sitemap' | 'menu';
@@ -126,7 +126,16 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
     const [issuesHeight, setIssuesHeight] = useState(() => Number(localStorage.getItem('issues-panel-height')) || 220);
     const canvasViewRef = useRef<CanvasViewHandle>(null);
     const issues = useMemo(() => validateDocument(document), [document]);
-    useImperativeHandle(ref, () => ({exportPdf: async () => canvasViewRef.current?.exportPdf()}), []);
+    useImperativeHandle(ref, () => ({
+        exportPdf: async () => {
+            if (!canvasViewRef.current) {
+                setView('canvas');
+                await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+            }
+            if (!canvasViewRef.current) throw new Error('Canvas ist für PDF-Export nicht verfügbar.');
+            await canvasViewRef.current.exportPdf();
+        },
+    }), []);
     const visibleNodeIds = useMemo(() => new Set(
         document.nodes
             .filter((node) => `${node.title} ${node.slug} ${node.description} ${node.owner} ${node.notes}`

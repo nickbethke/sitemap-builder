@@ -10,7 +10,7 @@
   [![Release builds](https://github.com/nickbethke/sitemap-builder/actions/workflows/release.yml/badge.svg)](https://github.com/nickbethke/sitemap-builder/actions/workflows/release.yml)
   [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)](https://react.dev/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-  [![MōBrowser](https://img.shields.io/badge/M%C5%8DBrowser-2.14-111827)](https://mobrowser.dev/)
+  [![MōBrowser](https://img.shields.io/badge/M%C5%8DBrowser-2.15-111827)](https://mobrowser.dev/)
 
   [Download](https://github.com/nickbethke/sitemap-builder/releases) · [Roadmap](TODO.md) · [Fehler melden](https://github.com/nickbethke/sitemap-builder/issues)
 </div>
@@ -32,7 +32,7 @@
 
 - Alle Seiten kompakt in einer Tabelle anzeigen
 - Titel, URL, Typ, Status und Verantwortliche direkt bearbeiten
-- Spalten sortieren und in der Breite anpassen
+- Spalten nach Titel, URL, Status oder Verantwortlichen sortieren
 - Nach Status, Seitentyp, Owner und SEO-Relevanz filtern
 - Mehrere Seiten auswählen und Status gesammelt ändern
 

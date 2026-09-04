@@ -104,11 +104,21 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
     const loadXmlUrl = async () => {
         setLoading(true);
         setError('');
+        const abortController = new AbortController();
+        enrichmentAbortRef.current = abortController;
         try {
-            await showResult(await ipc.app.ParseXmlUrl({url: sitemapUrl}));
+            for await (const result of ipc.app.ParseXmlUrl(
+                {url: sitemapUrl},
+                {signal: abortController.signal},
+            )) {
+                if (!abortController.signal.aborted) await showResult(result);
+            }
         } catch (caught) {
-            setError(caught instanceof Error ? caught.message : t('import.dialog.xmlLoadFailed'));
+            if (!abortController.signal.aborted) {
+                setError(caught instanceof Error ? caught.message : t('import.dialog.xmlLoadFailed'));
+            }
         } finally {
+            if (enrichmentAbortRef.current === abortController) enrichmentAbortRef.current = null;
             setLoading(false);
         }
     };

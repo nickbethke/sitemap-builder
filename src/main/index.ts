@@ -1,8 +1,9 @@
 import {app, BrowserWindow, ipc, Menu, MenuItem, MenuWithRole, Theme} from '@mobrowser/api';
-import {readFile, rename, stat, writeFile} from 'node:fs/promises';
+import {readFile, rename, rm, stat, writeFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import * as process from 'node:process';
 import {gzipSync, gunzipSync} from 'node:zlib';
+import {randomUUID} from 'node:crypto';
 import {
     CrawlRequest,
     EnrichImportRequest,
@@ -15,12 +16,17 @@ import {AppServiceDescriptor, MenuActionServiceDescriptor, OpenFileServiceDescri
 import {crawlWebsite} from './import/crawler';
 import {enrichImportedPage} from './import/page-parser';
 import {parseXmlSitemap, parseXmlSitemapUrl} from './import/xml';
+import {validateSitemapDocument} from '../shared/sitemap-schema';
 
 const MAGIC = Buffer.from('SMAP');
 const FORMAT_VERSION = 1;
 const MAX_JSON_SIZE = 10 * 1024 * 1024;
 const MAX_FILE_SIZE = 12 * 1024 * 1024;
+const MAX_EXPORT_SIZE = 50 * 1024 * 1024;
+const MAX_IMPORT_PAGES = 10_000;
 const startupSitemapPath = app.launchInfo.files.find((path) => extname(path).toLowerCase() === '.smap') ?? '';
+let currentSitemapPath = '';
+const pendingOpenedSitemapPaths = new Set<string>();
 const openedSitemaps = ipc.registerService(OpenFileServiceDescriptor);
 const menuActions = ipc.registerService(MenuActionServiceDescriptor);
 
@@ -45,7 +51,7 @@ win.show();
 
 function encodeSitemap(payload: string): Buffer {
     if (Buffer.byteLength(payload, 'utf8') > MAX_JSON_SIZE) throw new Error('Sitemap ist größer als 10 MB.');
-    JSON.parse(payload);
+    validateSitemapDocument(JSON.parse(payload));
     const header = Buffer.concat([MAGIC, Buffer.from([FORMAT_VERSION])]);
     return Buffer.concat([header, gzipSync(Buffer.from(payload, 'utf8'), {level: 9})]);
 }
@@ -68,7 +74,7 @@ function decodeSitemap(file: Buffer): string {
 
     try {
         const payload = gunzipSync(file.subarray(MAGIC.length + 1), {maxOutputLength: MAX_JSON_SIZE}).toString('utf8');
-        JSON.parse(payload);
+        validateSitemapDocument(JSON.parse(payload));
         return payload;
     } catch {
         throw new Error('.smap-Datei ist beschädigt oder ungültig.');
@@ -77,17 +83,21 @@ function decodeSitemap(file: Buffer): string {
 
 app.handle('openFile', (path) => {
     void openSitemapFile(path)
-        .then((sitemap) => openedSitemaps.WatchOpenedSitemaps(sitemap))
+        .then((sitemap) => {
+            pendingOpenedSitemapPaths.add(sitemap.path);
+            openedSitemaps.WatchOpenedSitemaps(sitemap);
+        })
         .catch((error: unknown) => console.error('Sitemap konnte nicht geöffnet werden:', error));
 });
 
 ipc.registerService(AppServiceDescriptor, {
     async SetTheme(request: SetThemeRequest) {
+        if (!['light', 'dark', 'system'].includes(request.theme)) throw new Error('Ungültiges Farbschema.');
         app.setTheme(request.theme as Theme);
         return {};
     },
     async SaveSitemap(request: SaveSitemapRequest) {
-        let path = request.currentPath;
+        let path = request.saveAs ? '' : currentSitemapPath;
         if (!path) {
             const result = await app.showSaveDialog({
                 parentWindow: win,
@@ -100,9 +110,14 @@ ipc.registerService(AppServiceDescriptor, {
         }
         if (extname(path).toLowerCase() !== '.smap') path += '.smap';
 
-        const temporaryPath = `${path}.tmp`;
-        await writeFile(temporaryPath, encodeSitemap(request.payload), {mode: 0o600});
-        await rename(temporaryPath, path);
+        const temporaryPath = `${path}.${randomUUID()}.tmp`;
+        try {
+            await writeFile(temporaryPath, encodeSitemap(request.payload), {flag: 'wx', mode: 0o600});
+            await rename(temporaryPath, path);
+        } finally {
+            await rm(temporaryPath, {force: true}).catch(() => undefined);
+        }
+        currentSitemapPath = path;
         return {canceled: false, path};
     },
     async OpenSitemap() {
@@ -115,20 +130,28 @@ ipc.registerService(AppServiceDescriptor, {
         if (result.canceled || !result.paths[0]) return {canceled: true, path: '', payload: ''};
 
         const sitemap = await openSitemapFile(result.paths[0]);
+        currentSitemapPath = sitemap.path;
         return {canceled: false, ...sitemap};
     },
     async GetStartupSitemap() {
         if (!startupSitemapPath) return {canceled: true, path: '', payload: ''};
         const sitemap = await openSitemapFile(startupSitemapPath);
+        currentSitemapPath = sitemap.path;
         return {canceled: false, ...sitemap};
     },
-    async ParseXmlUrl(request: ImportXmlUrlRequest) {
-        return {canceled: false, ...await parseXmlSitemapUrl(request.url)};
+    async ResolveOpenedSitemap(request) {
+        if (!pendingOpenedSitemapPaths.delete(request.path)) throw new Error('Dateiöffnung ist nicht mehr gültig.');
+        if (request.accepted) currentSitemapPath = request.path;
+        return {};
+    },
+    async* ParseXmlUrl(request: ImportXmlUrlRequest, context) {
+        yield {canceled: false, ...await parseXmlSitemapUrl(request.url, context.signal)};
     },
     async* CrawlWebsite(request: CrawlRequest, context) {
         yield* crawlWebsite(request, context.signal);
     },
     async* EnrichImportedPages(request: EnrichImportRequest, context) {
+        if (request.pages.length > MAX_IMPORT_PAGES) throw new Error(`Import enthält mehr als ${MAX_IMPORT_PAGES} Seiten.`);
         const total = request.pages.length;
         const concurrency = 6;
         const pending = new Map<number, Promise<(typeof request.pages)[number]>>();
@@ -170,7 +193,11 @@ ipc.registerService(AppServiceDescriptor, {
         return {canceled: false, ...parsed};
     },
     async ExportFile(request: ExportRequest) {
-        const config = EXPORT_FORMATS[request.format] ?? EXPORT_FORMATS.csv;
+        const config = EXPORT_FORMATS[request.format];
+        if (!config) throw new Error('Nicht unterstütztes Exportformat.');
+        if (Buffer.byteLength(request.content, config.binary ? 'base64' : 'utf8') > MAX_EXPORT_SIZE) {
+            throw new Error('Export ist größer als 50 MB.');
+        }
         const result = await app.showSaveDialog({
             parentWindow: win,
             title: `${config.label} exportieren`,
