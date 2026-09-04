@@ -23,6 +23,7 @@ function App() {
 
 function SitemapBuilder() {
     const sitemap = useSitemapBuilder();
+    const isMacOS = navigator.userAgent.includes('Macintosh');
     const [newSitemapOpen, setNewSitemapOpen] = useState(false);
     const [newPageParentId, setNewPageParentId] = useState<string | null>(null);
     const [importWebsiteOpen, setImportWebsiteOpen] = useState(false);
@@ -90,8 +91,8 @@ function SitemapBuilder() {
         <div className={presentationMode
             ? 'grid h-screen grid-cols-1 grid-rows-1 bg-background'
             : workspaceMode === 'menu'
-                ? 'grid h-screen grid-cols-1 grid-rows-[70px_minmax(0,1fr)] bg-background'
-                : 'grid h-screen grid-cols-[minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[minmax(500px,1fr)_285px]'}>
+                ? `grid h-screen grid-cols-1 grid-rows-[70px_minmax(0,1fr)] bg-background ${isMacOS ? 'macos-titlebar-inset' : ''}`
+                : `grid h-screen grid-cols-[minmax(540px,1fr)_316px] grid-rows-[70px_minmax(0,1fr)] bg-background max-[1180px]:grid-cols-[minmax(500px,1fr)_285px] ${isMacOS ? 'macos-titlebar-inset' : ''}`}>
             {!presentationMode && <Topbar
                 projectName={sitemap.document.project.name}
                 dirty={sitemap.dirty}
@@ -110,6 +111,7 @@ function SitemapBuilder() {
                 canRedo={sitemap.canRedo}
                 workspaceMode={workspaceMode}
                 onWorkspaceModeChange={setWorkspaceMode}
+                macOS={isMacOS}
             />}
 
             <Workspace

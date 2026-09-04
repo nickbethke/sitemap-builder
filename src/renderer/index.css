@@ -92,6 +92,18 @@
 }
 
 @layer components {
+    .macos-titlebar-inset {
+        @apply relative pt-7;
+    }
+
+    .macos-titlebar-inset::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 auto;
+        height: 1.75rem;
+        -webkit-app-region: drag;
+    }
+
     .blueprint-canvas {
         background-color: hsl(var(--canvas));
         background-image:

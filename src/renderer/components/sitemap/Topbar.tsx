@@ -19,6 +19,7 @@ type TopbarProps = {
     canRedo: boolean;
     workspaceMode: 'sitemap' | 'menu';
     onWorkspaceModeChange: (mode: 'sitemap' | 'menu') => void;
+    macOS: boolean;
 };
 
 export function Topbar({
@@ -36,12 +37,16 @@ export function Topbar({
                            canRedo,
                            workspaceMode,
                            onWorkspaceModeChange,
+                           macOS,
                        }: TopbarProps) {
     const {locale, setLocale, t} = useTranslation();
 
     return (
         <header
-            className="z-20 col-span-full grid grid-cols-[214px_minmax(240px,1fr)_auto] items-center border-b border-border bg-[hsl(var(--panel)/.94)] shadow-[0_1px_12px_hsl(var(--foreground)/.05)] backdrop-blur-xl [-webkit-app-region:drag] max-[1180px]:grid-cols-[180px_minmax(160px,1fr)_auto]">
+            className={cn(
+                'z-20 col-span-full grid grid-cols-[214px_minmax(240px,1fr)_auto] items-center border-b border-border bg-[hsl(var(--panel)/.94)] shadow-[0_1px_12px_hsl(var(--foreground)/.05)] backdrop-blur-xl [-webkit-app-region:drag] max-[1180px]:grid-cols-[180px_minmax(160px,1fr)_auto]',
+                macOS && 'border-t',
+            )}>
             <div
                 className="flex h-full items-center gap-3 border-r border-border px-4 text-foreground max-[1180px]:pl-3">
                 <div className="grid size-9 place-items-center">
