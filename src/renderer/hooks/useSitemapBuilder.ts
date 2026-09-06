@@ -3,6 +3,8 @@ import {ipc} from '@/gen/ipc';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {createImportedDocument, type ImportPreviewPage} from '@/lib/import.ts';
 import {validateSitemapDocument} from '../../shared/sitemap-schema.ts';
+import {clearAutosave, loadAutosave, saveAutosave} from '@/lib/autosave.ts';
+import {applyDocumentChange, createDocumentChange, type DocumentChange} from '@/lib/documentHistory.ts';
 import {
     createChildSlug,
     createNodeId,
@@ -58,6 +60,7 @@ export function useSitemapBuilder() {
     const revisionRef = useRef(0);
     const savingRef = useRef(false);
     const startupCheckedRef = useRef(false);
+    const autosaveQueueRef = useRef<Promise<void>>(Promise.resolve());
     const [message, setMessageRaw] = useState(() => t('status.ready'));
     const [messageIsDefault, setMessageIsDefault] = useState(true);
     const setMessage = useCallback((text: string) => {
@@ -68,8 +71,8 @@ export function useSitemapBuilder() {
         if (messageIsDefault) setMessageRaw(t('status.ready'));
     }, [locale, messageIsDefault, t]);
     const [search, setSearch] = useState('');
-    const [past, setPast] = useState<SitemapDocument[]>([]);
-    const [future, setFuture] = useState<SitemapDocument[]>([]);
+    const [past, setPast] = useState<DocumentChange[]>([]);
+    const [future, setFuture] = useState<DocumentChange[]>([]);
     const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
 
     const requestConfirmation = useCallback((options: ConfirmationOptions) => (
@@ -87,6 +90,11 @@ export function useSitemapBuilder() {
             destructive: true,
         })
     ), [requestConfirmation, t]);
+    const enqueueAutosave = useCallback((operation: () => Promise<void>) => {
+        const result = autosaveQueueRef.current.then(operation, operation);
+        autosaveQueueRef.current = result.catch(() => undefined);
+        return result;
+    }, []);
 
     const selectedNode = document.nodes.find(
         (node) => node.id === selectedId,
@@ -104,12 +112,13 @@ export function useSitemapBuilder() {
         mutation: (current: SitemapDocument) => SitemapDocument,
     ) => {
         setDocument((current) => {
-            setPast((items) => [...items.slice(-49), current]);
-            setFuture([]);
-            return {
+            const next = {
                 ...mutation(current),
                 updatedAt: new Date().toISOString(),
             };
+            setPast((items) => [...items.slice(-49), createDocumentChange(current, next)]);
+            setFuture([]);
+            return next;
         });
         revisionRef.current += 1;
         dirtyRef.current = true;
@@ -140,9 +149,11 @@ export function useSitemapBuilder() {
 
             setCurrentPath(result.path);
             if (revisionRef.current === savedRevision) {
-                localStorage.removeItem('sitemap-builder-autosave');
-                dirtyRef.current = false;
-                setDirty(false);
+                await enqueueAutosave(clearAutosave);
+                if (revisionRef.current === savedRevision) {
+                    dirtyRef.current = false;
+                    setDirty(false);
+                }
             }
             setMessage(t('status.saved', {name: result.path.split(/[\\/]/).pop() ?? ''}));
         } catch {
@@ -150,7 +161,7 @@ export function useSitemapBuilder() {
         } finally {
             savingRef.current = false;
         }
-    }, [currentPath, document, t]);
+    }, [currentPath, document, enqueueAutosave, setMessage, t]);
 
     const loadSitemap = useCallback((path: string, payload: string) => {
         const next = JSON.parse(payload) as SitemapDocument;
@@ -161,12 +172,12 @@ export function useSitemapBuilder() {
         setFuture([]);
         setSelectedId(next.nodes[0]?.id ?? '');
         setCurrentPath(path);
-        localStorage.removeItem('sitemap-builder-autosave');
+        void enqueueAutosave(clearAutosave);
         revisionRef.current += 1;
         dirtyRef.current = false;
         setDirty(false);
         setMessage(t('status.opened', {name: path.split(/[\\/]/).pop() ?? ''}));
-    }, [t]);
+    }, [enqueueAutosave, setMessage, t]);
 
     const open = async () => {
         try {
@@ -196,7 +207,7 @@ export function useSitemapBuilder() {
             error: () => setMessage(t('status.fileOpenFailed')),
         });
         return () => subscription.unsubscribe();
-    }, [confirmReplacement, loadSitemap, t]);
+    }, [confirmReplacement, loadSitemap, setMessage, t]);
 
     useEffect(() => {
         if (startupCheckedRef.current) return;
@@ -207,16 +218,15 @@ export function useSitemapBuilder() {
                     loadSitemap(result.path, result.payload);
                     return;
                 }
-                const autosave = localStorage.getItem('sitemap-builder-autosave');
+                const autosave = await loadAutosave();
                 if (autosave && await requestConfirmation({
                     title: t('confirm.restoreBackup.title'),
                     description: t('confirm.restoreBackup.description'),
                     confirmLabel: t('confirm.restoreBackup.confirm'),
                 })) {
-                    const recovered = JSON.parse(autosave) as {document: SitemapDocument; currentPath: string};
-                    validateSitemapDocument(recovered.document);
-                    setDocument(normalizeDocument(recovered.document));
-                    setSelectedId(recovered.document.nodes[0]?.id ?? '');
+                    validateSitemapDocument(autosave.document);
+                    setDocument(normalizeDocument(autosave.document));
+                    setSelectedId(autosave.document.nodes[0]?.id ?? '');
                     // Main process intentionally does not trust a renderer-persisted path.
                     setCurrentPath('');
                     revisionRef.current += 1;
@@ -226,39 +236,35 @@ export function useSitemapBuilder() {
                 }
             })
             .catch(() => setMessage(t('status.openFailed')));
-    }, [loadSitemap, requestConfirmation, t]);
+    }, [loadSitemap, requestConfirmation, setMessage, t]);
 
     const undo = useCallback(() => {
         setPast((items) => {
-            const previous = items.at(-1);
-            if (!previous) return items;
-            setDocument((current) => {
-                setFuture((next) => [current, ...next].slice(0, 50));
-                return previous;
-            });
+            const change = items.at(-1);
+            if (!change) return items;
+            setDocument((current) => applyDocumentChange(current, change, 'undo'));
+            setFuture((next) => [change, ...next].slice(0, 50));
             revisionRef.current += 1;
             dirtyRef.current = true;
             setDirty(true);
             setMessage(t('status.undone'));
             return items.slice(0, -1);
         });
-    }, [t]);
+    }, [setMessage, t]);
 
     const redo = useCallback(() => {
         setFuture((items) => {
-            const next = items[0];
-            if (!next) return items;
-            setDocument((current) => {
-                setPast((previous) => [...previous.slice(-49), current]);
-                return next;
-            });
+            const change = items[0];
+            if (!change) return items;
+            setDocument((current) => applyDocumentChange(current, change, 'redo'));
+            setPast((previous) => [...previous.slice(-49), change]);
             revisionRef.current += 1;
             dirtyRef.current = true;
             setDirty(true);
             setMessage(t('status.redone'));
             return items.slice(1);
         });
-    }, [t]);
+    }, [setMessage, t]);
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -279,16 +285,16 @@ export function useSitemapBuilder() {
 
     useEffect(() => {
         if (!dirty) return;
+        const revision = revisionRef.current;
         const timeout = window.setTimeout(() => {
-            try {
-                localStorage.setItem('sitemap-builder-autosave', JSON.stringify({document, currentPath}));
-                setMessage(t('status.autosaved'));
-            } catch {
-                setMessage(t('status.saveFailed'));
-            }
+            void enqueueAutosave(() => saveAutosave(document))
+                .then(() => {
+                    if (dirtyRef.current && revisionRef.current === revision) setMessage(t('status.autosaved'));
+                })
+                .catch(() => setMessage(t('status.autosaveFailed')));
         }, 800);
         return () => window.clearTimeout(timeout);
-    }, [currentPath, dirty, document, t]);
+    }, [dirty, document, enqueueAutosave, setMessage, t]);
 
     useEffect(() => {
         const warnBeforeClose = (event: BeforeUnloadEvent) => {
@@ -597,7 +603,7 @@ export function useSitemapBuilder() {
         project: SitemapProject,
     ): Promise<boolean> => {
         if (!await confirmReplacement()) return false;
-        const nextDocument = createProjectDocument(templateId, project);
+        const nextDocument = createProjectDocument(templateId, project, locale);
 
         setDocument(normalizeDocument(nextDocument));
         setPast([]);
@@ -627,7 +633,7 @@ export function useSitemapBuilder() {
         revisionRef.current += 1;
         dirtyRef.current = true;
         setDirty(true);
-        localStorage.removeItem('sitemap-builder-autosave');
+        void enqueueAutosave(clearAutosave);
         setMessage(t('status.importedPages', {count: nextDocument.nodes.length}));
         return true;
     };
@@ -645,7 +651,7 @@ export function useSitemapBuilder() {
             const result = await ipc.app.ExportFile({content, format, suggestedName: suggestedExportName()});
             setMessage(result.canceled ? t('status.exportCancelled') : t('status.exported', {name: result.path.split(/[\\/]/).pop() ?? ''}));
         } catch {
-            setMessage(t('status.saveFailed'));
+            setMessage(t('status.exportFailed'));
         }
     };
 
@@ -654,9 +660,10 @@ export function useSitemapBuilder() {
             const result = await ipc.app.ExportFile({content: base64, format: 'pdf', suggestedName: suggestedExportName()});
             setMessage(result.canceled ? t('status.exportCancelled') : t('status.exported', {name: result.path.split(/[\\/]/).pop() ?? ''}));
         } catch {
-            setMessage(t('status.saveFailed'));
+            setMessage(t('status.exportFailed'));
         }
     };
+    const reportExportError = useCallback(() => setMessage(t('status.exportFailed')), [setMessage, t]);
 
     return {
         theme,
@@ -690,6 +697,7 @@ export function useSitemapBuilder() {
         redo,
         exportFile,
         exportPdf,
+        reportExportError,
         open,
         updateProject,
         updateNode,

@@ -1,11 +1,11 @@
 import type {ImportedPage} from '@/gen/app.ts';
-import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from '@/lib/i18n/translations.ts';
+import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from './i18n/translations.ts';
 import {
     normalizeDocument,
     type PageType,
     type SitemapDocument,
     type SitemapNode,
-} from '@/lib/sitemap.ts';
+} from './sitemap.ts';
 
 export type ImportPreviewPage = ImportedPage & {
     selected: boolean;

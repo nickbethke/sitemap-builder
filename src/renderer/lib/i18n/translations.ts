@@ -1,5 +1,5 @@
-import {de, type TranslationKey} from '@/lib/i18n/de.ts';
-import {en} from '@/lib/i18n/en.ts';
+import {de, type TranslationKey} from './de.ts';
+import {en} from './en.ts';
 
 export type Locale = 'de' | 'en';
 
@@ -10,7 +10,7 @@ export const LOCALES: {id: Locale; label: string}[] = [
 
 export const DEFAULT_LOCALE: Locale = 'de';
 
-export type {TranslationKey} from '@/lib/i18n/de.ts';
+export type {TranslationKey} from './de.ts';
 
 type Dict = Record<TranslationKey, string>;
 

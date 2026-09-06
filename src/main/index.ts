@@ -2,7 +2,6 @@ import {app, BrowserWindow, ipc, Menu, MenuItem, MenuWithRole, Theme} from '@mob
 import {readFile, rename, rm, stat, writeFile} from 'node:fs/promises';
 import {extname} from 'node:path';
 import * as process from 'node:process';
-import {gzipSync, gunzipSync} from 'node:zlib';
 import {randomUUID} from 'node:crypto';
 import {
     CrawlRequest,
@@ -16,11 +15,8 @@ import {AppServiceDescriptor, MenuActionServiceDescriptor, OpenFileServiceDescri
 import {crawlWebsite} from './import/crawler';
 import {enrichImportedPage} from './import/page-parser';
 import {parseXmlSitemap, parseXmlSitemapUrl} from './import/xml';
-import {validateSitemapDocument} from '../shared/sitemap-schema';
+import {decodeSitemap, encodeSitemap} from './sitemap-file';
 
-const MAGIC = Buffer.from('SMAP');
-const FORMAT_VERSION = 1;
-const MAX_JSON_SIZE = 10 * 1024 * 1024;
 const MAX_FILE_SIZE = 12 * 1024 * 1024;
 const MAX_EXPORT_SIZE = 50 * 1024 * 1024;
 const MAX_IMPORT_PAGES = 10_000;
@@ -49,36 +45,12 @@ const win = new BrowserWindow({
 win.centerWindow();
 win.show();
 
-function encodeSitemap(payload: string): Buffer {
-    if (Buffer.byteLength(payload, 'utf8') > MAX_JSON_SIZE) throw new Error('Sitemap ist größer als 10 MB.');
-    validateSitemapDocument(JSON.parse(payload));
-    const header = Buffer.concat([MAGIC, Buffer.from([FORMAT_VERSION])]);
-    return Buffer.concat([header, gzipSync(Buffer.from(payload, 'utf8'), {level: 9})]);
-}
-
 async function openSitemapFile(path: string) {
     if (extname(path).toLowerCase() !== '.smap') throw new Error('Keine gültige .smap-Datei.');
     const file = await stat(path);
     if (!file.isFile()) throw new Error('Pfad ist keine Datei.');
     if (file.size > MAX_FILE_SIZE) throw new Error('Datei ist größer als 12 MB.');
     return {path, payload: decodeSitemap(await readFile(path))};
-}
-
-function decodeSitemap(file: Buffer): string {
-    if (file.length < 6 || !file.subarray(0, MAGIC.length).equals(MAGIC)) {
-        throw new Error('Keine gültige .smap-Datei.');
-    }
-    if (file[MAGIC.length] !== FORMAT_VERSION) {
-        throw new Error(`.smap-Version ${file[MAGIC.length]} wird nicht unterstützt.`);
-    }
-
-    try {
-        const payload = gunzipSync(file.subarray(MAGIC.length + 1), {maxOutputLength: MAX_JSON_SIZE}).toString('utf8');
-        validateSitemapDocument(JSON.parse(payload));
-        return payload;
-    } catch {
-        throw new Error('.smap-Datei ist beschädigt oder ungültig.');
-    }
 }
 
 app.handle('openFile', (path) => {

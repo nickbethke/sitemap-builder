@@ -63,6 +63,7 @@ Die integrierte Qualitätsprüfung erkennt unter anderem:
 - Undo/Redo für Bearbeitungen
 - XML-Sitemap für Suchmaschinen exportieren
 - CSV-Datei für Redaktion und Projektmanagement exportieren
+- Visuelle Sitemap als PDF sowie Struktur als Markdown oder statische HTML-Datei exportieren
 
 ## Download
 
@@ -113,7 +114,10 @@ Auf macOS entsteht ein DMG, auf Windows ein EXE-Installer. Linux-Builds werden i
 |---|---|
 | `npm run dev` | Entwicklungs-Build starten |
 | `npm run dev:build` | Entwicklungs-Build ohne Start erstellen |
-| `npm run build` | Produktions-Build erstellen |
+| `npm run build` | Typecheck, Tests und Produktions-Build ausführen |
+| `npm run typecheck` | Renderer und Main-Prozess statisch prüfen |
+| `npm run lint` | TypeScript- und React-Regeln prüfen |
+| `npm test` | Unit- und Integrationstests ausführen |
 | `npm run pack` | Nativen Installer packen |
 | `npm run gen` | IPC-/Protobuf-Bindings neu generieren |
 
@@ -135,9 +139,13 @@ Auf macOS entsteht ein DMG, auf Windows ein EXE-Installer. Linux-Builds werden i
 - [Tailwind CSS](https://tailwindcss.com/) – Styling
 - [Radix UI](https://www.radix-ui.com/) und [Lucide](https://lucide.dev/) – UI-Komponenten und Icons
 
+## Lokale Daten
+
+Projekte werden nur in gewählten `.smap`-Dateien gespeichert. Ungespeicherte Änderungen sichert die App lokal in IndexedDB und entfernt die Sicherung nach erfolgreichem Speichern. Projekt- und Autosave-Daten sind nicht zusätzlich verschlüsselt und werden nicht an einen Cloud-Dienst übertragen.
+
 ## Roadmap
 
-Geplant sind unter anderem Website- und XML-Importe, zusätzliche Exportformate, Dashboard-Auswertungen, Content-Briefings und erweiterte Redirect-Prüfungen. Vollständige Planung steht in [`TODO.md`](TODO.md).
+Geplant sind unter anderem zusätzliche Exportformate, Dashboard-Auswertungen, Content-Briefings und erweiterte Redirect-Prüfungen. Vollständige Planung steht in [`TODO.md`](TODO.md).
 
 ## Mitwirken
 

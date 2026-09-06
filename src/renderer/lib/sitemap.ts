@@ -1,4 +1,4 @@
-import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from '@/lib/i18n/translations.ts';
+import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from './i18n/translations.ts';
 
 export type PageType =
     | 'home'
@@ -493,7 +493,10 @@ export function normalizeDocument(document: SitemapDocument): SitemapDocument {
 export function createProjectDocument(
     templateId: ProjectTemplateId,
     project: SitemapProject,
+    locale: Locale = DEFAULT_LOCALE,
 ): SitemapDocument {
+    const localized = (deTitle: string, deSlug: string, enTitle: string, enSlug: string): [string, string] =>
+        locale === 'en' ? [enTitle, enSlug] : [deTitle, deSlug];
     const node = (
         id: string,
         parentId: string | null,
@@ -517,50 +520,50 @@ export function createProjectDocument(
         notes: '',
         showInMainNavigation: isMainNavigationDefault({parentId, pageType}),
     });
-    const root = node('home', null, 'Startseite', '/', 'home');
+    const root = node('home', null, ...localized('Startseite', '/', 'Home', '/'), 'home');
     let nodes: SitemapNode[] = [root];
 
     if (templateId === 'company') {
         nodes = [
             root,
-            node('services', 'home', 'Leistungen', '/leistungen', 'service'),
-            node('service-one', 'services', 'Beratung', '/leistungen/beratung', 'landing'),
-            node('service-two', 'services', 'Umsetzung', '/leistungen/umsetzung', 'landing'),
-            node('about', 'home', 'Über uns', '/ueber-uns'),
-            node('team', 'about', 'Team', '/ueber-uns/team'),
-            node('cases', 'home', 'Projekte', '/projekte', 'archive'),
-            node('case-one', 'cases', 'Projektbeispiel', '/projekte/projektbeispiel'),
-            node('insights', 'home', 'Wissen', '/wissen', 'archive'),
-            node('contact', 'home', 'Kontakt', '/kontakt', 'contact'),
-            node('privacy', 'home', 'Datenschutz', '/datenschutz', 'legal'),
+            node('services', 'home', ...localized('Leistungen', '/leistungen', 'Services', '/services'), 'service'),
+            node('service-one', 'services', ...localized('Beratung', '/leistungen/beratung', 'Consulting', '/services/consulting'), 'landing'),
+            node('service-two', 'services', ...localized('Umsetzung', '/leistungen/umsetzung', 'Implementation', '/services/implementation'), 'landing'),
+            node('about', 'home', ...localized('Über uns', '/ueber-uns', 'About us', '/about')),
+            node('team', 'about', ...localized('Team', '/ueber-uns/team', 'Team', '/about/team')),
+            node('cases', 'home', ...localized('Projekte', '/projekte', 'Projects', '/projects'), 'archive'),
+            node('case-one', 'cases', ...localized('Projektbeispiel', '/projekte/projektbeispiel', 'Example project', '/projects/example')),
+            node('insights', 'home', ...localized('Wissen', '/wissen', 'Insights', '/insights'), 'archive'),
+            node('contact', 'home', ...localized('Kontakt', '/kontakt', 'Contact', '/contact'), 'contact'),
+            node('privacy', 'home', ...localized('Datenschutz', '/datenschutz', 'Privacy', '/privacy'), 'legal'),
         ];
     } else if (templateId === 'local-service') {
         nodes = [
             root,
-            node('services', 'home', 'Leistungen', '/leistungen', 'service'),
-            node('service-one', 'services', 'Hauptleistung', '/leistungen/hauptleistung', 'landing'),
-            node('service-two', 'services', 'Weitere Leistung', '/leistungen/weitere-leistung', 'landing'),
-            node('areas', 'home', 'Einzugsgebiet', '/einzugsgebiet', 'landing'),
-            node('area-one', 'areas', 'Standort', '/einzugsgebiet/standort'),
-            node('about', 'home', 'Über uns', '/ueber-uns'),
-            node('reviews', 'home', 'Kundenstimmen', '/kundenstimmen'),
-            node('contact', 'home', 'Kontakt', '/kontakt', 'contact'),
-            node('imprint', 'home', 'Impressum', '/impressum', 'legal'),
+            node('services', 'home', ...localized('Leistungen', '/leistungen', 'Services', '/services'), 'service'),
+            node('service-one', 'services', ...localized('Hauptleistung', '/leistungen/hauptleistung', 'Main service', '/services/main-service'), 'landing'),
+            node('service-two', 'services', ...localized('Weitere Leistung', '/leistungen/weitere-leistung', 'Additional service', '/services/additional-service'), 'landing'),
+            node('areas', 'home', ...localized('Einzugsgebiet', '/einzugsgebiet', 'Service area', '/service-area'), 'landing'),
+            node('area-one', 'areas', ...localized('Standort', '/einzugsgebiet/standort', 'Location', '/service-area/location')),
+            node('about', 'home', ...localized('Über uns', '/ueber-uns', 'About us', '/about')),
+            node('reviews', 'home', ...localized('Kundenstimmen', '/kundenstimmen', 'Testimonials', '/testimonials')),
+            node('contact', 'home', ...localized('Kontakt', '/kontakt', 'Contact', '/contact'), 'contact'),
+            node('imprint', 'home', ...localized('Impressum', '/impressum', 'Legal notice', '/legal-notice'), 'legal'),
         ];
     } else if (templateId === 'shop') {
         nodes = [
             root,
-            node('catalog', 'home', 'Shop', '/shop', 'category'),
-            node('category-one', 'catalog', 'Kategorie 1', '/shop/kategorie-1', 'category'),
-            node('product-one', 'category-one', 'Produkt 1', '/shop/kategorie-1/produkt-1', 'product'),
-            node('product-two', 'category-one', 'Produkt 2', '/shop/kategorie-1/produkt-2', 'product'),
-            node('category-two', 'catalog', 'Kategorie 2', '/shop/kategorie-2', 'category'),
-            node('about', 'home', 'Über uns', '/ueber-uns'),
-            node('journal', 'home', 'Magazin', '/magazin', 'archive'),
-            node('contact', 'home', 'Kontakt', '/kontakt', 'contact'),
-            node('shipping', 'home', 'Versand & Zahlung', '/versand-zahlung', 'content'),
-            node('returns', 'home', 'Widerruf', '/widerruf', 'legal'),
-            node('privacy', 'home', 'Datenschutz', '/datenschutz', 'legal'),
+            node('catalog', 'home', ...localized('Shop', '/shop', 'Shop', '/shop'), 'category'),
+            node('category-one', 'catalog', ...localized('Kategorie 1', '/shop/kategorie-1', 'Category 1', '/shop/category-1'), 'category'),
+            node('product-one', 'category-one', ...localized('Produkt 1', '/shop/kategorie-1/produkt-1', 'Product 1', '/shop/category-1/product-1'), 'product'),
+            node('product-two', 'category-one', ...localized('Produkt 2', '/shop/kategorie-1/produkt-2', 'Product 2', '/shop/category-1/product-2'), 'product'),
+            node('category-two', 'catalog', ...localized('Kategorie 2', '/shop/kategorie-2', 'Category 2', '/shop/category-2'), 'category'),
+            node('about', 'home', ...localized('Über uns', '/ueber-uns', 'About us', '/about')),
+            node('journal', 'home', ...localized('Magazin', '/magazin', 'Journal', '/journal'), 'archive'),
+            node('contact', 'home', ...localized('Kontakt', '/kontakt', 'Contact', '/contact'), 'contact'),
+            node('shipping', 'home', ...localized('Versand & Zahlung', '/versand-zahlung', 'Shipping & payment', '/shipping-payment'), 'content'),
+            node('returns', 'home', ...localized('Widerruf', '/widerruf', 'Returns', '/returns'), 'legal'),
+            node('privacy', 'home', ...localized('Datenschutz', '/datenschutz', 'Privacy', '/privacy'), 'legal'),
         ];
     }
 

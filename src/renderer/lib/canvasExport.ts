@@ -1,7 +1,9 @@
 import {toPng} from 'html-to-image';
 import {jsPDF} from 'jspdf';
+import {validatePdfExportDimensions} from '../../shared/export-policy.ts';
 
 export async function captureCanvasAsPdfBase64(node: HTMLElement, width: number, height: number): Promise<string> {
+    validatePdfExportDimensions(width, height);
     const dataUrl = await toPng(node, {
         width,
         height,

@@ -111,6 +111,7 @@ export const de = {
     'status.undone': 'Änderung rückgängig gemacht',
     'status.redone': 'Änderung wiederholt',
     'status.autosaved': 'Automatisch gesichert',
+    'status.autosaveFailed': 'Automatische Sicherung fehlgeschlagen',
     'status.movedUp': 'Seite nach oben sortiert',
     'status.movedDown': 'Seite nach unten sortiert',
     'status.movedUpLevel': 'Seite eine Ebene hoch verschoben',
@@ -121,6 +122,7 @@ export const de = {
     'status.importedPages': '{{count}} Seiten aus XML importiert',
     'status.exportCancelled': 'Export abgebrochen',
     'status.exported': 'Exportiert: {{name}}',
+    'status.exportFailed': 'Export fehlgeschlagen oder zu groß',
     'status.pageDeletedOne': '1 Seite gelöscht',
     'status.pageDeletedMany': '{{count}} Seiten gelöscht',
 

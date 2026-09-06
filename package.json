@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "mobrowser dev",
     "dev:build": "npm run typecheck && mobrowser dev:build",
-    "build": "npm run typecheck && npm test && mobrowser build",
+    "build": "npm run typecheck && npm run lint && npm test && mobrowser build",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "lint": "eslint .",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "pack": "mobrowser pack",
     "gen": "mobrowser gen",

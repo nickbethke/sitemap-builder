@@ -113,6 +113,7 @@ export const en: Record<TranslationKey, string> = {
     'status.undone': 'Change undone',
     'status.redone': 'Change redone',
     'status.autosaved': 'Autosaved',
+    'status.autosaveFailed': 'Autosave failed',
     'status.movedUp': 'Page moved up',
     'status.movedDown': 'Page moved down',
     'status.movedUpLevel': 'Page moved up one level',
@@ -123,6 +124,7 @@ export const en: Record<TranslationKey, string> = {
     'status.importedPages': '{{count}} pages imported from XML',
     'status.exportCancelled': 'Export cancelled',
     'status.exported': 'Exported: {{name}}',
+    'status.exportFailed': 'Export failed or is too large',
     'status.pageDeletedOne': '1 page deleted',
     'status.pageDeletedMany': '{{count}} pages deleted',
 

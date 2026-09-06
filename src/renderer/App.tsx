@@ -143,6 +143,7 @@ function SitemapBuilder() {
                 onUpdateNode={sitemap.updateNodeById}
                 onUpdateNodes={sitemap.updateNodes}
                 onExportPdf={sitemap.exportPdf}
+                onExportError={sitemap.reportExportError}
                 presentationMode={presentationMode}
                 onPresentationModeChange={togglePresentationMode}
                 workspaceMode={workspaceMode}
