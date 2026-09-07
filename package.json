@@ -55,7 +55,8 @@
     "@mobrowser/sdk-darwin-arm64@2.15.0": true,
     "@mobrowser/sdk-linux-x64@2.15.0": true,
     "@mobrowser/sdk-win-x64@2.15.0": true,
-    "fsevents@2.3.3": true
+    "fsevents@2.3.3": true,
+    "core-js@3.50.0": true
   },
   "devDependencies": {
     "@mobrowser/cli": "^2.15.0",
@@ -76,6 +77,11 @@
     "ts-proto": "^2.10.1",
     "typescript": "^5.8.3",
     "vite": "^8.0.0"
+  },
+  "overrides": {
+    "@mobrowser/cli": {
+      "adm-zip": "0.6.0"
+    }
   },
   "engines": {
     "node": "^20.20.2 || ^22.22.2 || >=24.14.1"

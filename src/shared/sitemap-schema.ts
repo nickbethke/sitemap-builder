@@ -4,7 +4,8 @@ const PAGE_TYPES = new Set([
 ]);
 const SEO_IMPORTANCE = new Set(['high', 'medium', 'low', 'none']);
 const PAGE_STATUSES = new Set(['planned', 'in-progress', 'review', 'done']);
-const MAX_NODES = 10_000;
+export const MAX_NODES = 10_000;
+export const MAX_SITEMAP_JSON_SIZE = 10 * 1024 * 1024;
 const MAX_HIERARCHY_DEPTH = 100;
 const MAX_SHORT_TEXT = 10_000;
 const MAX_LONG_TEXT = 100_000;
@@ -95,5 +96,8 @@ export function validateSitemapDocument(value: unknown): void {
             if (depth > MAX_HIERARCHY_DEPTH) throw new Error(`Seitenhierarchie ist tiefer als ${MAX_HIERARCHY_DEPTH} Ebenen.`);
             cursor = parents.get(cursor) ?? null;
         }
+    }
+    if (new TextEncoder().encode(JSON.stringify(value)).byteLength > MAX_SITEMAP_JSON_SIZE) {
+        throw new Error('Sitemap ist größer als 10 MB.');
     }
 }

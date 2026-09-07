@@ -139,9 +139,17 @@ Auf macOS entsteht ein DMG, auf Windows ein EXE-Installer. Linux-Builds werden i
 - [Tailwind CSS](https://tailwindcss.com/) – Styling
 - [Radix UI](https://www.radix-ui.com/) und [Lucide](https://lucide.dev/) – UI-Komponenten und Icons
 
+## Build-Sicherheit
+
+Für `@mobrowser/cli@2.15.0` ist `adm-zip` gezielt auf `0.6.0` überschrieben, um [GHSA-xcpc-8h2w-3j85](https://github.com/advisories/GHSA-xcpc-8h2w-3j85) zu schließen. `tests/build-zip-compatibility.test.ts` prüft die von der CLI verwendete Archivextraktion. Override nach einem entsprechenden SDK-Update erneut bewerten; Windows-/Linux-Releasebuilds zusätzlich prüfen.
+
 ## Lokale Daten
 
 Projekte werden nur in gewählten `.smap`-Dateien gespeichert. Ungespeicherte Änderungen sichert die App lokal in IndexedDB und entfernt die Sicherung nach erfolgreichem Speichern. Projekt- und Autosave-Daten sind nicht zusätzlich verschlüsselt und werden nicht an einen Cloud-Dienst übertragen.
+
+Dateidialoge starten bei Erstnutzung in `Dokumente` (Fallback: Home-Ordner), nie im Wurzelverzeichnis. Die App merkt sich getrennt zuletzt verwendete Ordner für Projekte (`.smap`), Exporte und XML-Importe in lokalen App-Einstellungen.
+
+Lokale XML-Dateien werden standardmäßig offline eingelesen. Verknüpfte Sitemap-Dateien werden nur nach Aktivieren der Netzwerkoption geladen. Die Vorschau ruft keine einzelnen Seiten ab: „Ausgewählte Seiten online prüfen“ startet diese optionale Prüfung. URL-Import und Website-Crawl sind ausdrücklich Online-Aktionen. Zielserver und öffentliche Weiterleitungsziele können dabei Ihre IP-Adresse, Zeitpunkt und angefragte URLs einschließlich Query-Parametern sehen.
 
 ## Roadmap
 

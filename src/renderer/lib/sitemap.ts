@@ -1,3 +1,4 @@
+import {escapeMarkdownText, markdownPath, sitemapExportUrl, validateExportBaseUrl} from '../../shared/text-export-policy.ts';
 import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from './i18n/translations.ts';
 
 export type PageType =
@@ -622,13 +623,17 @@ export function validateDocument(document: SitemapDocument): ValidationIssue[] {
 }
 
 export function documentToXml(document: SitemapDocument): string {
-    const base = document.project.baseUrl.replace(/\/$/, '');
+    const base = validateExportBaseUrl(document.project.baseUrl);
     const escape = (value: string) => value.replace(/[<>&'"]/g, (char) => ({
         '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;',
     })[char] ?? char);
-    const urls = document.nodes.filter((node) => !node.noIndex).map((node) =>
-        `  <url>\n    <loc>${escape(`${base}${node.slug === '/' ? '' : node.slug}`)}</loc>\n  </url>`,
-    ).join('\n');
+    const seen = new Set<string>();
+    const urls = document.nodes.filter((node) => !node.noIndex).map((node) => {
+        const url = sitemapExportUrl(base, node.slug);
+        if (seen.has(url)) throw new Error(`Doppelte Export-URL: ${url}`);
+        seen.add(url);
+        return `  <url>\n    <loc>${escape(url)}</loc>\n  </url>`;
+    }).join('\n');
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
 }
 
@@ -662,9 +667,9 @@ function groupByParent(nodes: SitemapNode[]): Map<string | null, SitemapNode[]> 
 export function documentToMarkdown(document: SitemapDocument, locale: Locale = DEFAULT_LOCALE): string {
     const t = (key: TranslationKey) => translations[locale][key];
     const childrenByParent = groupByParent(document.nodes);
-    const lines: string[] = [`# ${document.project.name}`, ''];
-    if (document.project.client) lines.push(`${t('export.client')}: ${document.project.client}`);
-    if (document.project.baseUrl) lines.push(`${t('export.baseUrl')}: ${document.project.baseUrl}`);
+    const lines: string[] = [`# ${escapeMarkdownText(document.project.name)}`, ''];
+    if (document.project.client) lines.push(`${t('export.client')}: ${escapeMarkdownText(document.project.client)}`);
+    if (document.project.baseUrl) lines.push(`${t('export.baseUrl')}: ${escapeMarkdownText(document.project.baseUrl)}`);
     lines.push('');
 
     const walk = (parentId: string | null, depth: number) => {
@@ -678,7 +683,7 @@ export function documentToMarkdown(document: SitemapDocument, locale: Locale = D
             ]
                 .filter(Boolean)
                 .join(' · ');
-            lines.push(`${indent}- [${node.title || t('export.untitled')}](${node.slug || '/'}) — ${details}`);
+            lines.push(`${indent}- [${escapeMarkdownText(node.title || t('export.untitled'))}](${markdownPath(node.slug || '/')}) — ${details}`);
             walk(node.id, depth + 1);
         }
     };

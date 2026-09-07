@@ -1,3 +1,4 @@
+import {MAX_NODES, validateSitemapDocument} from '../../shared/sitemap-schema.ts';
 import type {ImportedPage} from '@/gen/app.ts';
 import {DEFAULT_LOCALE, type Locale, type TranslationKey, translations} from './i18n/translations.ts';
 import {
@@ -61,7 +62,7 @@ function idFromPath(path: string, usedIds: Set<string>): string {
             .replace(/^\/+|\/+$/g, '')
             .replace(/[^a-z0-9äöüß]+/gi, '-')
             .replace(/^-|-$/g, '')
-            .toLowerCase() || 'page';
+            .toLowerCase().slice(0, 200) || 'page';
     let id = base;
     let suffix = 2;
     while (usedIds.has(id)) {
@@ -85,6 +86,11 @@ export function createImportedDocument(
     const nodes: SitemapNode[] = [];
 
     const rootPage = selected.find(({path}) => pathnameOf(path) === '/');
+    if (selected.length + (rootPage ? 0 : 1) > MAX_NODES) {
+        throw new Error(locale === 'en'
+            ? 'A sitemap supports 10000 pages including the homepage. Deselect pages before importing.'
+            : 'Eine Sitemap unterstützt 10000 Seiten einschließlich Startseite. Bitte vor dem Import Seiten abwählen.');
+    }
     if (!rootPage) {
         usedIds.add('home');
         idByPath.set('/', 'home');
@@ -141,10 +147,12 @@ export function createImportedDocument(
         node.parentId = (parentPath && idByPath.get(parentPath)) || rootId;
     }
 
-    return normalizeDocument({
+    const document = normalizeDocument({
         formatVersion: 1,
         project: {name: projectName.trim() || t('import.defaultProjectName'), baseUrl, client: ''},
         nodes,
         updatedAt: new Date().toISOString(),
     });
+    validateSitemapDocument(document);
+    return document;
 }

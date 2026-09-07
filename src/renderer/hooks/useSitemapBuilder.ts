@@ -1,4 +1,6 @@
 import {useTheme} from '@/components/theme-provider.tsx';
+import {useSynchronousState} from './useSynchronousState.ts';
+import {canDuplicateNode, canPromoteNode, prepareDocumentMutation} from '@/lib/documentOperations.ts';
 import {ipc} from '@/gen/ipc';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {createImportedDocument, type ImportPreviewPage} from '@/lib/import.ts';
@@ -44,7 +46,7 @@ type ConfirmationRequest = ConfirmationOptions & {
 export function useSitemapBuilder() {
     const {theme, setTheme} = useTheme();
     const {locale, t} = useTranslation();
-    const [document, setDocument] = useState<SitemapDocument>(
+    const [document, setDocument, documentRef] = useSynchronousState<SitemapDocument>(
         () => normalizeDocument(starterDocument),
     );
     const [selectedId, setSelectedId] = useState('webdesign');
@@ -71,8 +73,8 @@ export function useSitemapBuilder() {
         if (messageIsDefault) setMessageRaw(t('status.ready'));
     }, [locale, messageIsDefault, t]);
     const [search, setSearch] = useState('');
-    const [past, setPast] = useState<DocumentChange[]>([]);
-    const [future, setFuture] = useState<DocumentChange[]>([]);
+    const [past, setPast] = useSynchronousState<DocumentChange[]>([]);
+    const [future, setFuture] = useSynchronousState<DocumentChange[]>([]);
     const [confirmation, setConfirmation] = useState<ConfirmationRequest | null>(null);
 
     const requestConfirmation = useCallback((options: ConfirmationOptions) => (
@@ -111,19 +113,21 @@ export function useSitemapBuilder() {
     const mutateDocument = useCallback((
         mutation: (current: SitemapDocument) => SitemapDocument,
     ) => {
-        setDocument((current) => {
-            const next = {
-                ...mutation(current),
-                updatedAt: new Date().toISOString(),
-            };
+        try {
+            const current = documentRef.current;
+            const next = prepareDocumentMutation(current, mutation);
             setPast((items) => [...items.slice(-49), createDocumentChange(current, next)]);
             setFuture([]);
-            return next;
-        });
-        revisionRef.current += 1;
-        dirtyRef.current = true;
-        setDirty(true);
-    }, []);
+            setDocument(next);
+            revisionRef.current += 1;
+            dirtyRef.current = true;
+            setDirty(true);
+            return true;
+        } catch (error) {
+            setMessage(`${t('status.changeFailed')}: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
+        }
+    }, [documentRef, setDocument, setFuture, setMessage, setPast, t]);
 
     const toggleTheme = async () => {
         const newTheme = theme === 'dark' ? 'light' : 'dark';
@@ -156,8 +160,8 @@ export function useSitemapBuilder() {
                 }
             }
             setMessage(t('status.saved', {name: result.path.split(/[\\/]/).pop() ?? ''}));
-        } catch {
-            setMessage(t('status.saveFailed'));
+        } catch (error) {
+            setMessage(`${t('status.saveFailed')}: ${error instanceof Error ? error.message : String(error)}`);
         } finally {
             savingRef.current = false;
         }
@@ -177,7 +181,7 @@ export function useSitemapBuilder() {
         dirtyRef.current = false;
         setDirty(false);
         setMessage(t('status.opened', {name: path.split(/[\\/]/).pop() ?? ''}));
-    }, [enqueueAutosave, setMessage, t]);
+    }, [enqueueAutosave, setDocument, setFuture, setMessage, setPast, t]);
 
     const open = async () => {
         try {
@@ -236,7 +240,7 @@ export function useSitemapBuilder() {
                 }
             })
             .catch(() => setMessage(t('status.openFailed')));
-    }, [loadSitemap, requestConfirmation, setMessage, t]);
+    }, [loadSitemap, requestConfirmation, setDocument, setMessage, t]);
 
     const undo = useCallback(() => {
         setPast((items) => {
@@ -250,7 +254,7 @@ export function useSitemapBuilder() {
             setMessage(t('status.undone'));
             return items.slice(0, -1);
         });
-    }, [setMessage, t]);
+    }, [setDocument, setFuture, setMessage, setPast, t]);
 
     const redo = useCallback(() => {
         setFuture((items) => {
@@ -264,7 +268,7 @@ export function useSitemapBuilder() {
             setMessage(t('status.redone'));
             return items.slice(1);
         });
-    }, [setMessage, t]);
+    }, [setDocument, setFuture, setMessage, setPast, t]);
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -362,16 +366,15 @@ export function useSitemapBuilder() {
             showInMainNavigation: true,
         };
 
-        mutateDocument((current) => ({
+        if (mutateDocument((current) => ({
             ...current,
             nodes: [...current.nodes, node],
-        }));
-        setSelectedId(node.id);
+        }))) setSelectedId(node.id);
     };
 
     const duplicateNode = (nodeId = selectedId) => {
         const source = document.nodes.find((node) => node.id === nodeId);
-        if (!source) return;
+        if (!source || !canDuplicateNode(source)) return;
 
         const id = createNodeId();
         const duplicate: SitemapNode = {
@@ -384,15 +387,14 @@ export function useSitemapBuilder() {
             (node) => node.id === source.id,
         );
 
-        mutateDocument((current) => ({
+        if (mutateDocument((current) => ({
             ...current,
             nodes: [
                 ...current.nodes.slice(0, sourceIndex + 1),
                 duplicate,
                 ...current.nodes.slice(sourceIndex + 1),
             ],
-        }));
-        setSelectedId(id);
+        }))) setSelectedId(id);
     };
 
     const moveNodeSibling = (nodeId: string, direction: -1 | 1) => {
@@ -440,16 +442,16 @@ export function useSitemapBuilder() {
         const parent = document.nodes.find(
             (node) => node.id === source?.parentId,
         );
-        if (!source || !parent) return;
+        if (!source || !parent || !canPromoteNode(document, source)) return;
 
-        mutateDocument((current) => ({
+        if (!mutateDocument((current) => ({
             ...current,
             nodes: current.nodes.map((node) => (
                 node.id === source.id
                     ? {...node, parentId: parent.parentId}
                     : node
             )),
-        }));
+        }))) return;
         setSelectedId(source.id);
         setMessage(t('status.movedUpLevel'));
     };
@@ -562,7 +564,8 @@ export function useSitemapBuilder() {
     };
 
     const canMoveTo = (nodeId: string, parentId: string) => {
-        if (nodeId === parentId) return false;
+        const source = document.nodes.find(node => node.id === nodeId);
+        if (!source || source.parentId === null || nodeId === parentId) return false;
 
         let cursor = document.nodes.find((node) => node.id === parentId);
         while (cursor) {
@@ -582,16 +585,17 @@ export function useSitemapBuilder() {
         event.preventDefault();
 
         if (draggedId && canMoveTo(draggedId, parentId)) {
-            mutateDocument((current) => ({
+            if (mutateDocument((current) => ({
                 ...current,
                 nodes: current.nodes.map((node) => (
                     node.id === draggedId
                         ? {...node, parentId}
                         : node
                 )),
-            }));
-            setSelectedId(draggedId);
-            setMessage(t('status.relinked'));
+            }))) {
+                setSelectedId(draggedId);
+                setMessage(t('status.relinked'));
+            }
         }
 
         setDraggedId(null);
@@ -602,8 +606,9 @@ export function useSitemapBuilder() {
         templateId: ProjectTemplateId,
         project: SitemapProject,
     ): Promise<boolean> => {
-        if (!await confirmReplacement()) return false;
         const nextDocument = createProjectDocument(templateId, project, locale);
+        validateSitemapDocument(nextDocument);
+        if (!await confirmReplacement()) return false;
 
         setDocument(normalizeDocument(nextDocument));
         setPast([]);
@@ -622,9 +627,9 @@ export function useSitemapBuilder() {
         projectName: string,
         baseUrl: string,
     ): Promise<boolean> => {
-        if (!await confirmReplacement()) return false;
-
         const nextDocument = createImportedDocument(pages, projectName, baseUrl, locale);
+        validateSitemapDocument(nextDocument);
+        if (!await confirmReplacement()) return false;
         setDocument(normalizeDocument(nextDocument));
         setPast([]);
         setFuture([]);
@@ -650,8 +655,8 @@ export function useSitemapBuilder() {
             }[format]();
             const result = await ipc.app.ExportFile({content, format, suggestedName: suggestedExportName()});
             setMessage(result.canceled ? t('status.exportCancelled') : t('status.exported', {name: result.path.split(/[\\/]/).pop() ?? ''}));
-        } catch {
-            setMessage(t('status.exportFailed'));
+        } catch (error) {
+            setMessage(`${t('status.exportFailed')}: ${error instanceof Error ? error.message : String(error)}`);
         }
     };
 

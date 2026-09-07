@@ -1,3 +1,4 @@
+import {Alert, AlertDescription} from '@/components/ui/alert.tsx';
 import {Button} from '@/components/ui/button.tsx';
 import {
     Dialog,
@@ -11,7 +12,7 @@ import {Input} from '@/components/ui/input.tsx';
 import {RadioGroup, RadioGroupItem} from '@/components/ui/radio-group.tsx';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {PROJECT_TEMPLATES, type ProjectTemplateId, type SitemapProject} from '@/lib/sitemap.ts';
-import {X} from 'lucide-react';
+import {TriangleAlert, X} from 'lucide-react';
 import {useState} from 'react';
 
 type NewSitemapDialogProps = {
@@ -31,11 +32,15 @@ export function NewSitemapDialog({onClose, onCreate}: NewSitemapDialogProps) {
         baseUrl: 'https://',
     });
     const [creating, setCreating] = useState(false);
+    const [error, setError] = useState('');
 
     const create = async () => {
         setCreating(true);
+        setError('');
         try {
             if (await onCreate(templateId, project)) onClose();
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : String(caught));
         } finally {
             setCreating(false);
         }
@@ -91,6 +96,16 @@ export function NewSitemapDialog({onClose, onCreate}: NewSitemapDialogProps) {
                         <Input className="h-9 px-2 text-xs text-foreground" value={project.baseUrl} onChange={(event) => setProject({...project, baseUrl: event.target.value})}/>
                     </label>
                 </div>
+
+                {error && (
+                    <Alert
+                        className="mx-5 mb-4 flex w-auto shrink-0 items-center gap-2 [&>svg+div]:translate-y-0 [&>svg]:static [&>svg]:shrink-0 [&>svg~*]:pl-0"
+                        variant="destructive"
+                    >
+                        <TriangleAlert/>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
 
                 <DialogFooter className="flex-row justify-end gap-2 border-t border-border px-5 py-4 [&_button]:h-9 [&_button]:text-xs">
                     <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>

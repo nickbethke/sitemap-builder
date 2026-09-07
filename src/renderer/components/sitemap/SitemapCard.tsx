@@ -1,3 +1,4 @@
+import {canDuplicateNode, canPromoteNode} from '@/lib/documentOperations.ts';
 import {CardContextMenu} from '@/components/sitemap/CardContextMenu.tsx';
 import {Badge} from '@/components/ui/badge.tsx';
 import {Card} from '@/components/ui/card.tsx';
@@ -169,10 +170,11 @@ export function SitemapCard({
                             <Badge className={badgeClass} variant="destructive">{t('export.noIndexLabel')}</Badge>}
                     </div>
                     <CardContextMenu
+                        canDuplicate={canDuplicateNode(node)}
                         canDelete={node.parentId !== null}
                         canMoveUp={siblingIndex > 0}
                         canMoveDown={siblingIndex < siblings.length - 1}
-                        canMoveUpLevel={node.parentId !== null}
+                        canMoveUpLevel={canPromoteNode(document, node)}
                         onAddChild={onAddChild}
                         onDuplicate={onDuplicate}
                         onDelete={onDelete}

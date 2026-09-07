@@ -1,5 +1,5 @@
 import {toPng} from 'html-to-image';
-import {jsPDF} from 'jspdf';
+import {createCanvasPdf} from './pdfDocument.ts';
 import {validatePdfExportDimensions} from '../../shared/export-policy.ts';
 
 export async function captureCanvasAsPdfBase64(node: HTMLElement, width: number, height: number): Promise<string> {
@@ -11,10 +11,7 @@ export async function captureCanvasAsPdfBase64(node: HTMLElement, width: number,
         style: {transform: 'scale(1)'},
     });
 
-    const pdf = new jsPDF({
-        unit: 'px',
-        format: [width, height],
-    });
+    const pdf = createCanvasPdf(width, height);
     pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
 
     const dataUri = pdf.output('datauristring');

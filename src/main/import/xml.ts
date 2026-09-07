@@ -5,13 +5,11 @@ import {gunzipSync} from 'node:zlib';
 import {XMLParser} from 'fast-xml-parser';
 import {SyntaxValidator} from 'fast-xml-validator';
 import {Agent, fetch as undiciFetch} from 'undici';
-import {createPinnedLookup, isUnsafeRemoteAddress} from '../../shared/network-policy';
+import {createPinnedLookup, isUnsafeRemoteAddress} from '../../shared/network-policy.ts';
+import {XmlImportBudget, XmlImportLimitError, XML_IMPORT_LIMITS} from './xml-budget.ts';
 
 const MAX_COMPRESSED_SIZE = 5 * 1024 * 1024;
 const MAX_XML_SIZE = 20 * 1024 * 1024;
-const MAX_SITEMAPS = 50;
-const MAX_DEPTH = 5;
-const MAX_URLS = 10_000;
 const FETCH_TIMEOUT = 10_000;
 
 export const BROWSER_REQUEST_HEADERS = {
@@ -85,7 +83,10 @@ export async function fetchSafeRemote(
     if (url.username || url.password) throw new Error(`Sitemap-URL enthält Zugangsdaten: ${url.href}`);
     if (url.hostname.toLowerCase() === 'localhost') throw new Error('Lokale Netzwerkadressen werden nicht importiert.');
 
-    const addresses = await lookup(url.hostname, {all: true, verbatim: true});
+    init.signal?.throwIfAborted();
+    const hostname = url.hostname.replace(/^\[|\]$/g, '');
+    const addresses = await withAbort(lookup(hostname, {all: true, verbatim: true}), init.signal);
+    init.signal?.throwIfAborted();
     if (!addresses.length || addresses.some(({address}) => isUnsafeRemoteAddress(address))) {
         throw new Error(`Private Netzwerkadresse wird nicht importiert: ${url.hostname}`);
     }
@@ -100,7 +101,21 @@ export async function fetchSafeRemote(
     }
 }
 
-async function readLimitedResponse(response: SafeResponse): Promise<Buffer> {
+async function withAbort<T>(promise: Promise<T>, signal?: AbortSignal | null): Promise<T> {
+    if (!signal) return promise;
+    signal.throwIfAborted();
+    let onAbort: () => void = () => undefined;
+    try {
+        return await Promise.race([promise, new Promise<never>((_, reject) => {
+            onAbort = () => reject(signal.reason);
+            signal.addEventListener('abort', onAbort, {once: true});
+        })]);
+    } finally {
+        signal.removeEventListener('abort', onAbort);
+    }
+}
+
+async function readLimitedResponse(response: SafeResponse, budget: XmlImportBudget): Promise<Buffer> {
     const contentLength = Number(response.headers.get('content-length') ?? 0);
     if (contentLength > MAX_XML_SIZE) throw new Error('XML-Sitemap ist größer als 20 MB.');
     if (!response.body) return Buffer.alloc(0);
@@ -112,27 +127,27 @@ async function readLimitedResponse(response: SafeResponse): Promise<Buffer> {
         while (true) {
             const {done, value} = await reader.read();
             if (done) break;
+            budget.consumeBytes(value.byteLength);
             total += value.byteLength;
             if (total > MAX_XML_SIZE) throw new Error('XML-Sitemap ist größer als 20 MB.');
             chunks.push(value);
         }
     } finally {
-        if (total > MAX_XML_SIZE) await reader.cancel();
+        await reader.cancel();
         reader.releaseLock();
     }
     return Buffer.concat(chunks, total);
 }
 
-async function fetchXml(startUrl: URL, allowedOrigin: string, signal?: AbortSignal): Promise<Buffer> {
+async function fetchXml(startUrl: URL, allowedOrigin: string, budget: XmlImportBudget): Promise<Buffer> {
     let url = startUrl;
     for (let redirects = 0; redirects <= 5; redirects += 1) {
         if (url.origin !== allowedOrigin) throw new Error(`Sitemap verweist auf fremde Domain: ${url.origin}`);
 
+        budget.request();
         const {response, close} = await fetchSafeRemote(url, {
             redirect: 'manual',
-            signal: signal
-                ? AbortSignal.any([signal, AbortSignal.timeout(FETCH_TIMEOUT)])
-                : AbortSignal.timeout(FETCH_TIMEOUT),
+            signal: AbortSignal.any([budget.signal, AbortSignal.timeout(FETCH_TIMEOUT)]),
             headers: {
                 accept: 'application/xml,text/xml,application/xhtml+xml,text/html;q=0.9,*/*;q=0.8',
                 ...BROWSER_REQUEST_HEADERS,
@@ -146,7 +161,7 @@ async function fetchXml(startUrl: URL, allowedOrigin: string, signal?: AbortSign
                 continue;
             }
             if (!response.ok) throw new Error(`Sitemap konnte nicht geladen werden: HTTP ${response.status}`);
-            return await readLimitedResponse(response);
+            return await readLimitedResponse(response, budget);
         } finally {
             await response.body?.cancel();
             await close();
@@ -155,17 +170,18 @@ async function fetchXml(startUrl: URL, allowedOrigin: string, signal?: AbortSign
     throw new Error('Sitemap hat zu viele Weiterleitungen.');
 }
 
-function decodeXml(buffer: Buffer, source: string): string {
+function decodeXml(buffer: Buffer, source: string, budget: XmlImportBudget): string {
     const compressed = extname(new URL(source, 'file:///').pathname).toLowerCase() === '.gz'
         || (buffer[0] === 0x1f && buffer[1] === 0x8b);
     const decoded = compressed ? gunzipSync(buffer, {maxOutputLength: MAX_XML_SIZE}) : buffer;
     if (decoded.byteLength > MAX_XML_SIZE) throw new Error('XML-Sitemap ist größer als 20 MB.');
+    budget.consumeBytes(decoded.byteLength);
     return decoded.toString('utf8');
 }
 
-function parseDocument(buffer: Buffer, source: string): SitemapDocument {
+function parseDocument(buffer: Buffer, source: string, budget: XmlImportBudget): SitemapDocument {
     try {
-        const xml = decodeXml(buffer, source);
+        const xml = decodeXml(buffer, source, budget);
         SyntaxValidator.validate(xml, {
             allowBooleanAttributes: false,
             docType: {maxEntityCount: 0, maxEntitySize: 0},
@@ -174,6 +190,8 @@ function parseDocument(buffer: Buffer, source: string): SitemapDocument {
         if (!parsed.urlset && !parsed.sitemapindex) throw new Error('XML enthält weder urlset noch sitemapindex.');
         return parsed;
     } catch (error) {
+        budget.check();
+        if (error instanceof XmlImportLimitError) throw error;
         if (error instanceof Error && error.message.includes('XML enthält')) throw error;
         throw new Error(`XML-Sitemap ist beschädigt oder ungültig: ${error instanceof Error ? error.message : 'Parserfehler'}`);
     }
@@ -209,65 +227,77 @@ function titleFromPath(pathname: string): string {
         .replace(/\b\p{L}/gu, (character) => character.toUpperCase());
 }
 
-async function parseXmlImport(
+export type XmlImportOptions = {allowRemote?: boolean; signal?: AbortSignal};
+
+/** Transport injection keeps traversal tests offline; IPC never accepts a transport. */
+export async function parseXmlImport(
     source: string,
     initialBuffer: Buffer,
-    initialAllowedOrigin = '',
-    signal?: AbortSignal,
+    options: XmlImportOptions = {},
+    loadRemote = fetchXml,
+    budget = new XmlImportBudget(options.signal),
 ): Promise<ParsedXmlImport> {
-    const documents = new Set<string>();
     const rawUrls: string[] = [];
-    const warnings: string[] = [];
-    let allowedOrigin = initialAllowedOrigin;
+    const warnings = budget.warnings;
+    let allowedOrigin = /^https?:/.test(source) ? new URL(source).origin : '';
+    let offlineIndex = false;
 
     const visit = async (currentSource: string, buffer: Buffer, depth: number): Promise<void> => {
-        signal?.throwIfAborted();
-        if (depth > MAX_DEPTH) throw new Error(`Sitemap-Index ist tiefer als ${MAX_DEPTH} Ebenen.`);
-        if (documents.size >= MAX_SITEMAPS) throw new Error(`Sitemap-Index enthält mehr als ${MAX_SITEMAPS} Dateien.`);
-        if (documents.has(currentSource)) {
-            warnings.push(`Sitemap-Schleife übersprungen: ${currentSource}`);
-            return;
+        budget.check();
+        const document = parseDocument(buffer, currentSource, budget);
+        const entries = asArray(document.urlset?.url);
+        if (entries.length > XML_IMPORT_LIMITS.urls - rawUrls.length) {
+            throw new XmlImportLimitError('Sitemap enthält mehr als 10000 URLs.');
         }
-        documents.add(currentSource);
-
-        const document = parseDocument(buffer, currentSource);
-        for (const entry of asArray(document.urlset?.url)) {
-            const loc = locValue(entry.loc);
-            if (loc) rawUrls.push(loc);
-            if (rawUrls.length > MAX_URLS) throw new Error(`Sitemap enthält mehr als ${MAX_URLS} URLs.`);
-        }
+        // Commit only after the whole URL batch fits. Limit failures are fatal.
+        rawUrls.push(...entries.map(entry => locValue(entry.loc)).filter(Boolean));
 
         for (const entry of asArray(document.sitemapindex?.sitemap)) {
+            budget.check();
             const loc = locValue(entry.loc);
             const childUrl = normalizePageUrl(loc);
             if (!childUrl) {
-                warnings.push(`Ungültige Sitemap-URL übersprungen: ${loc || '(leer)'}`);
+                budget.warn(`Ungültige Sitemap-URL übersprungen: ${loc || '(leer)'}`);
+                continue;
+            }
+            if (!options.allowRemote) {
+                offlineIndex = true;
+                budget.warn(`Offline: verknüpfte Sitemap nicht geladen (${childUrl.origin}). Für Indexdateien Netzwerkzugriff aktivieren und Datei erneut auswählen.`);
                 continue;
             }
             allowedOrigin ||= childUrl.origin;
+            if (childUrl.origin !== allowedOrigin) {
+                budget.warn(`Sitemap verweist auf fremde Domain: ${childUrl.origin}`);
+                continue;
+            }
+            // Reserve before fetching, including failed files. Check duplicates first.
+            if (!budget.reserveDocument(childUrl.href, depth + 1)) continue;
             try {
-                await visit(childUrl.href, await fetchXml(childUrl, allowedOrigin, signal), depth + 1);
+                await visit(childUrl.href, await loadRemote(childUrl, allowedOrigin, budget), depth + 1);
             } catch (error) {
-                if (signal?.aborted) throw error;
-                warnings.push(`${childUrl.href}: ${error instanceof Error ? error.message : 'Import fehlgeschlagen'}`);
+                budget.check();
+                if (error instanceof XmlImportLimitError) throw error;
+                budget.warn(`${childUrl.href}: ${error instanceof Error ? error.message : 'Import fehlgeschlagen'}`);
             }
         }
     };
 
+    budget.reserveDocument(source, 0);
     await visit(source, initialBuffer, 0);
 
     const pages: ImportedXmlPage[] = [];
     const seen = new Set<string>();
     let pageOrigin = '';
     for (const value of rawUrls) {
+        budget.check();
         const url = normalizePageUrl(value);
         if (!url) {
-            warnings.push(`Ungültige Seiten-URL übersprungen: ${value}`);
+            budget.warn(`Ungültige Seiten-URL übersprungen: ${value}`);
             continue;
         }
         pageOrigin ||= url.origin;
         if (url.origin !== pageOrigin) {
-            warnings.push(`Fremde Domain übersprungen: ${url.href}`);
+            budget.warn(`Fremde Domain übersprungen: ${url.href}`);
             continue;
         }
         if (seen.has(url.href)) continue;
@@ -287,7 +317,9 @@ async function parseXmlImport(
         });
     }
 
-    if (!pages.length) throw new Error('XML-Sitemap enthält keine importierbaren URLs.');
+    if (!pages.length) throw new Error(offlineIndex
+        ? `Offline-Import: ${warnings[0]}`
+        : 'XML-Sitemap enthält keine importierbaren URLs.');
     pages.sort((left, right) => left.path.localeCompare(right.path, 'de'));
     const host = new URL(pageOrigin).hostname.replace(/^www\./, '');
     return {
@@ -298,15 +330,18 @@ async function parseXmlImport(
     };
 }
 
-export async function parseXmlSitemap(path: string): Promise<ParsedXmlImport> {
+export async function parseXmlSitemap(path: string, options: XmlImportOptions = {}): Promise<ParsedXmlImport> {
+    const budget = new XmlImportBudget(options.signal);
+    budget.check();
     const file = await stat(path);
     if (!file.isFile()) throw new Error('Pfad ist keine Datei.');
     if (file.size > MAX_COMPRESSED_SIZE) throw new Error('XML-Datei ist größer als 5 MB.');
-    return parseXmlImport(path, await readFile(path));
+    return parseXmlImport(path, await readFile(path, {signal: budget.signal}), options, fetchXml, budget);
 }
 
 export async function parseXmlSitemapUrl(value: string, signal?: AbortSignal): Promise<ParsedXmlImport> {
     const url = normalizePageUrl(value.trim());
     if (!url) throw new Error('Bitte eine gültige HTTP- oder HTTPS-URL eingeben.');
-    return parseXmlImport(url.href, await fetchXml(url, url.origin, signal), url.origin, signal);
+    const budget = new XmlImportBudget(signal);
+    return parseXmlImport(url.href, await fetchXml(url, url.origin, budget), {allowRemote: true, signal}, fetchXml, budget);
 }

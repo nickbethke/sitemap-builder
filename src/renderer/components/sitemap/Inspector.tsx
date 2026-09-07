@@ -1,3 +1,4 @@
+import {canDuplicateNode} from '@/lib/documentOperations.ts';
 import {AccordionSection} from '@/components/sitemap/AccordionSection.tsx';
 import {Button} from '@/components/ui/button.tsx';
 import {Checkbox} from '@/components/ui/checkbox.tsx';
@@ -303,7 +304,7 @@ export function Inspector({
                 <Button variant="outline" size="icon" aria-label={t('inspector.moveDownAria')} title={t('inspector.moveDown')} disabled={!canMoveDown} onClick={onMoveDown}>
                     <ArrowDown size={15}/>
                 </Button>
-                <Button className="flex-1" variant="outline" size="sm" onClick={onDuplicate}>
+                <Button className="flex-1" variant="outline" size="sm" disabled={!canDuplicateNode(selectedNode)} onClick={onDuplicate}>
                     <Copy size={15}/>
                     {t('inspector.duplicate')}
                 </Button>

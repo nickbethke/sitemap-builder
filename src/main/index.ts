@@ -1,6 +1,7 @@
-import {app, BrowserWindow, ipc, Menu, MenuItem, MenuWithRole, Theme} from '@mobrowser/api';
+import {app, BrowserWindow, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme} from '@mobrowser/api';
 import {readFile, rename, rm, stat, writeFile} from 'node:fs/promises';
 import {extname} from 'node:path';
+import {DialogPathPreferences} from './dialog-paths.ts';
 import * as process from 'node:process';
 import {randomUUID} from 'node:crypto';
 import {
@@ -16,6 +17,12 @@ import {crawlWebsite} from './import/crawler';
 import {enrichImportedPage} from './import/page-parser';
 import {parseXmlSitemap, parseXmlSitemapUrl} from './import/xml';
 import {decodeSitemap, encodeSitemap} from './sitemap-file';
+
+const dialogPaths = new DialogPathPreferences(
+    (key) => prefs.getString(key),
+    (key, value) => prefs.setString(key, value),
+    () => prefs.persist(),
+);
 
 const MAX_FILE_SIZE = 12 * 1024 * 1024;
 const MAX_EXPORT_SIZE = 50 * 1024 * 1024;
@@ -50,7 +57,9 @@ async function openSitemapFile(path: string) {
     const file = await stat(path);
     if (!file.isFile()) throw new Error('Pfad ist keine Datei.');
     if (file.size > MAX_FILE_SIZE) throw new Error('Datei ist größer als 12 MB.');
-    return {path, payload: decodeSitemap(await readFile(path))};
+    const sitemap = {path, payload: decodeSitemap(await readFile(path))};
+    dialogPaths.remember('project', path);
+    return sitemap;
 }
 
 app.handle('openFile', (path) => {
@@ -74,7 +83,7 @@ ipc.registerService(AppServiceDescriptor, {
             const result = await app.showSaveDialog({
                 parentWindow: win,
                 title: 'Sitemap speichern',
-                defaultPath: 'website-struktur.smap',
+                defaultPath: dialogPaths.savePath('project', 'website-struktur.smap'),
                 filters: [{name: 'Sitemap Builder Datei', extensions: ['smap']}],
             });
             if (result.canceled || !result.path) return {canceled: true, path: ''};
@@ -90,6 +99,7 @@ ipc.registerService(AppServiceDescriptor, {
             await rm(temporaryPath, {force: true}).catch(() => undefined);
         }
         currentSitemapPath = path;
+        dialogPaths.remember('project', path);
         return {canceled: false, path};
     },
     async OpenSitemap() {
@@ -97,6 +107,7 @@ ipc.registerService(AppServiceDescriptor, {
             parentWindow: win,
             title: 'Sitemap öffnen',
             selectionPolicy: 'files',
+            defaultPath: dialogPaths.directory('project'),
             filters: [{name: 'Sitemap Builder Datei', extensions: ['smap']}],
         });
         if (result.canceled || !result.paths[0]) return {canceled: true, path: '', payload: ''};
@@ -150,19 +161,23 @@ ipc.registerService(AppServiceDescriptor, {
             fillQueue();
         }
     },
-    async SelectAndParseXml() {
+    async* SelectAndParseXml(request, context) {
         const result = await app.showOpenDialog({
             parentWindow: win,
             title: 'XML-Sitemap importieren',
             selectionPolicy: 'files',
+            defaultPath: dialogPaths.directory('import'),
             filters: [{name: 'XML-Sitemap', extensions: ['xml', 'gz']}],
         });
+        context.signal.throwIfAborted();
         if (result.canceled || !result.paths[0]) {
-            return {canceled: true, pages: [], baseUrl: '', projectName: '', warnings: []};
+            yield {canceled: true, pages: [], baseUrl: '', projectName: '', warnings: []};
+            return;
         }
 
-        const parsed = await parseXmlSitemap(result.paths[0]);
-        return {canceled: false, ...parsed};
+        dialogPaths.remember('import', result.paths[0]);
+        const parsed = await parseXmlSitemap(result.paths[0], {allowRemote: request.allowRemote, signal: context.signal});
+        yield {canceled: false, ...parsed};
     },
     async ExportFile(request: ExportRequest) {
         const config = EXPORT_FORMATS[request.format];
@@ -173,7 +188,7 @@ ipc.registerService(AppServiceDescriptor, {
         const result = await app.showSaveDialog({
             parentWindow: win,
             title: `${config.label} exportieren`,
-            defaultPath: `${request.suggestedName || 'sitemap'}.${config.extension}`,
+            defaultPath: dialogPaths.savePath('export', `${request.suggestedName || 'sitemap'}.${config.extension}`),
             filters: [{name: `${config.label} Datei`, extensions: [config.extension]}],
         });
         if (result.canceled || !result.path) return {canceled: true, path: ''};
@@ -185,6 +200,7 @@ ipc.registerService(AppServiceDescriptor, {
         } else {
             await writeFile(path, request.content, {encoding: 'utf8', mode: 0o600});
         }
+        dialogPaths.remember('export', path);
         return {canceled: false, path};
     },
 });

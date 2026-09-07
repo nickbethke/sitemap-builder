@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 type CardContextMenuProps = {
+    canDuplicate: boolean;
     canDelete: boolean;
     canMoveUp: boolean;
     canMoveDown: boolean;
@@ -32,6 +33,7 @@ type CardContextMenuProps = {
 };
 
 export function CardContextMenu({
+    canDuplicate,
     canDelete,
     canMoveUp,
     canMoveDown,
@@ -71,7 +73,7 @@ export function CardContextMenu({
                         <Plus/>
                         {t('cardMenu.addChild')}
                     </DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs" onSelect={onDuplicate}>
+                    <DropdownMenuItem className="text-xs" disabled={!canDuplicate} onSelect={onDuplicate}>
                         <Copy/>
                         {t('cardMenu.duplicate')}
                     </DropdownMenuItem>

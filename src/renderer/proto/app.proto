@@ -67,6 +67,10 @@ message ImportXmlResponse {
   repeated string warnings = 5;
 }
 
+message ImportXmlFileRequest {
+  bool allow_remote = 1;
+}
+
 message ImportXmlUrlRequest {
   string url = 1;
 }
@@ -101,7 +105,7 @@ service AppService {
   rpc GetStartupSitemap(google.protobuf.Empty) returns (OpenSitemapResponse);
   rpc ResolveOpenedSitemap(ResolveOpenedSitemapRequest) returns (google.protobuf.Empty);
   rpc ExportFile(ExportRequest) returns (ExportResponse);
-  rpc SelectAndParseXml(google.protobuf.Empty) returns (ImportXmlResponse);
+  rpc SelectAndParseXml(ImportXmlFileRequest) returns (stream ImportXmlResponse);
   rpc ParseXmlUrl(ImportXmlUrlRequest) returns (stream ImportXmlResponse);
   rpc EnrichImportedPages(EnrichImportRequest) returns (stream ImportProgress);
   rpc CrawlWebsite(CrawlRequest) returns (stream CrawlProgress);

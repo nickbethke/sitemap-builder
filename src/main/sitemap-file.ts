@@ -1,9 +1,9 @@
 import {gzipSync, gunzipSync} from 'node:zlib';
-import {validateSitemapDocument} from '../shared/sitemap-schema.ts';
+import {MAX_SITEMAP_JSON_SIZE, validateSitemapDocument} from '../shared/sitemap-schema.ts';
+export {MAX_SITEMAP_JSON_SIZE} from '../shared/sitemap-schema.ts';
 
 const MAGIC = Buffer.from('SMAP');
 const FORMAT_VERSION = 1;
-export const MAX_SITEMAP_JSON_SIZE = 10 * 1024 * 1024;
 
 export function encodeSitemap(payload: string): Buffer {
     if (Buffer.byteLength(payload, 'utf8') > MAX_SITEMAP_JSON_SIZE) throw new Error('Sitemap ist größer als 10 MB.');

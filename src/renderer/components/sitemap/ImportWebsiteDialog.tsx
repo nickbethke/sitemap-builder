@@ -8,6 +8,7 @@ import {
     DialogFooter,
     DialogTitle,
 } from '@/components/ui/dialog.tsx';
+import {Field, FieldContent, FieldDescription, FieldGroup, FieldLabel} from '@/components/ui/field.tsx';
 import {Input} from '@/components/ui/input.tsx';
 import {Progress} from '@/components/ui/progress.tsx';
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from '@/components/ui/table.tsx';
@@ -16,7 +17,7 @@ import {ipc} from '@/gen/ipc.ts';
 import {useTranslation} from '@/lib/i18n/context.tsx';
 import {prepareImportPages, type ImportPreviewPage} from '@/lib/import.ts';
 import {FileCode2, Globe2, Search, TriangleAlert, X} from 'lucide-react';
-import {useCallback, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
 type ImportWebsiteDialogProps = {
     onClose: () => void;
@@ -37,11 +38,14 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
     const [maxPages, setMaxPages] = useState(500);
     const [maxDepth, setMaxDepth] = useState(10);
     const [ignoreQueryParameters, setIgnoreQueryParameters] = useState(true);
+    const [allowRemoteIndex, setAllowRemoteIndex] = useState(false);
     const [loading, setLoading] = useState(false);
     const [applying, setApplying] = useState(false);
     const [error, setError] = useState('');
     const [progress, setProgress] = useState<{completed: number; total: number; label: string} | null>(null);
     const enrichmentAbortRef = useRef<AbortController | null>(null);
+
+    useEffect(() => () => enrichmentAbortRef.current?.abort(), []);
 
     const close = useCallback(() => {
         enrichmentAbortRef.current?.abort();
@@ -57,46 +61,55 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
     const selectedCount = pages.filter(({selected}) => selected).length;
     const allFilteredSelected = filteredPages.length > 0 && filteredPages.every(({selected}) => selected);
 
-    const showResult = async (result: ImportXmlResponse) => {
+    const showResult = (result: ImportXmlResponse) => {
         if (result.canceled) return;
-
-        const prepared = prepareImportPages(result.pages);
-        const pageIndexes = new Map(prepared.map((page, index) => [page.url, index]));
-        const abortController = new AbortController();
-        enrichmentAbortRef.current = abortController;
-        setProgress({completed: 0, total: prepared.length, label: t('import.dialog.enrichProgress')});
-
-        try {
-            for await (const event of ipc.app.EnrichImportedPages(
-                {pages: result.pages},
-                {signal: abortController.signal},
-            )) {
-                if (event.page) {
-                    const index = pageIndexes.get(event.page.url);
-                    if (index !== undefined) prepared[index] = {...prepared[index], ...event.page};
-                }
-                setProgress({completed: event.completed, total: event.total, label: t('import.dialog.enrichProgress')});
-            }
-        } finally {
-            if (enrichmentAbortRef.current === abortController) enrichmentAbortRef.current = null;
-        }
-
-        if (abortController.signal.aborted) return;
-        setPages(prepared);
+        // Preview is always passive. Page requests require a separate explicit action.
+        setPages(prepareImportPages(result.pages));
         setProjectName(result.projectName);
         setBaseUrl(result.baseUrl);
         setWarnings(result.warnings);
         setProgress(null);
     };
 
-    const chooseXml = async () => {
+    const enrichSelected = async () => {
+        if (loading || !selectedCount) return;
+        const selected = pages.filter(page => page.selected);
+        const abortController = new AbortController();
+        enrichmentAbortRef.current = abortController;
         setLoading(true);
         setError('');
+        setProgress({completed: 0, total: selected.length, label: t('import.dialog.enrichProgress')});
         try {
-            await showResult(await ipc.app.SelectAndParseXml({}));
+            for await (const event of ipc.app.EnrichImportedPages({pages: selected}, {signal: abortController.signal})) {
+                const enriched = event.page;
+                if (enriched) setPages(current => current.map(page => page.url === enriched.url ? {...page, ...enriched} : page));
+                setProgress({completed: event.completed, total: event.total, label: t('import.dialog.enrichProgress')});
+            }
         } catch (caught) {
-            setError(caught instanceof Error ? caught.message : t('import.dialog.xmlImportFailed'));
+            if (!abortController.signal.aborted) setError(caught instanceof Error ? caught.message : String(caught));
         } finally {
+            if (enrichmentAbortRef.current === abortController) enrichmentAbortRef.current = null;
+            setProgress(null);
+            setLoading(false);
+        }
+    };
+
+    const chooseXml = async () => {
+        if (loading) return;
+        setLoading(true);
+        setError('');
+        const abortController = new AbortController();
+        enrichmentAbortRef.current = abortController;
+        try {
+            for await (const result of ipc.app.SelectAndParseXml(
+                {allowRemote: allowRemoteIndex}, {signal: abortController.signal},
+            )) {
+                if (!abortController.signal.aborted) showResult(result);
+            }
+        } catch (caught) {
+            if (!abortController.signal.aborted) setError(caught instanceof Error ? caught.message : t('import.dialog.xmlImportFailed'));
+        } finally {
+            if (enrichmentAbortRef.current === abortController) enrichmentAbortRef.current = null;
             setLoading(false);
         }
     };
@@ -111,7 +124,7 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                 {url: sitemapUrl},
                 {signal: abortController.signal},
             )) {
-                if (!abortController.signal.aborted) await showResult(result);
+                if (!abortController.signal.aborted) showResult(result);
             }
         } catch (caught) {
             if (!abortController.signal.aborted) {
@@ -157,6 +170,7 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
             }
         } finally {
             if (enrichmentAbortRef.current === abortController) enrichmentAbortRef.current = null;
+            setProgress(null);
             setLoading(false);
         }
     };
@@ -175,9 +189,13 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
     };
 
     const apply = async () => {
+        if (loading || applying) return;
         setApplying(true);
+        setError('');
         try {
             if (await onImport(pages, projectName, baseUrl)) onClose();
+        } catch (caught) {
+            setError(caught instanceof Error ? caught.message : String(caught));
         } finally {
             setApplying(false);
         }
@@ -208,12 +226,29 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                     </Button>
                 </header>
 
+                {error && (
+                    <Alert
+                        className="mx-6 mt-4 flex w-auto shrink-0 items-center gap-2 [&>svg+div]:translate-y-0 [&>svg]:static [&>svg]:shrink-0 [&>svg~*]:pl-0"
+                        variant="destructive"
+                    >
+                        <TriangleAlert/>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                )}
+                {progress && (
+                    <Alert className="mx-6 mt-4 w-auto shrink-0" role="status" aria-live="polite">
+                        <AlertTitle>{progress.label} {progress.completed} / {progress.total}</AlertTitle>
+                        <AlertDescription><Progress value={progress.total ? progress.completed / progress.total * 100 : 0}/></AlertDescription>
+                    </Alert>
+                )}
+
                 {pages.length === 0 ? (
-                    <div className="grid grid-cols-2 gap-4 p-6">
+                    <div className="grid min-h-0 grid-cols-2 gap-4 overflow-y-auto p-6">
                         <div className="flex min-h-52 flex-col items-start rounded-xl border border-border bg-background p-5">
                             <span className="mb-4 grid size-10 place-items-center rounded-lg bg-primary/10 text-primary"><FileCode2 size={21}/></span>
                             <strong className="text-sm">{t('import.dialog.xmlCardTitle')}</strong>
                             <span className="mt-2 text-xs leading-relaxed text-muted-foreground">{t('import.dialog.xmlCardDescription')}</span>
+                            <p className="text-xs text-muted-foreground">{t('import.dialog.urlNetworkNotice')}</p>
                             <form className="mt-4 flex w-full gap-2" onSubmit={(event) => { event.preventDefault(); void loadXmlUrl(); }}>
                                 <Input
                                     className="h-9 min-w-0 flex-1 text-xs"
@@ -226,6 +261,15 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                                 <Button className="h-9 text-xs" type="submit" disabled={loading || !sitemapUrl.trim()}>{t('import.dialog.load')}</Button>
                             </form>
                             <div className="my-3 flex w-full items-center gap-3 text-[9px] uppercase tracking-wider text-muted-foreground before:h-px before:flex-1 before:bg-border after:h-px after:flex-1 after:bg-border">{t('import.dialog.or')}</div>
+                            <FieldGroup className="mb-4">
+                                <Field orientation="horizontal" data-disabled={loading}>
+                                    <Checkbox id="allow-remote-index" checked={allowRemoteIndex} disabled={loading} onCheckedChange={checked => setAllowRemoteIndex(checked === true)}/>
+                                    <FieldContent>
+                                        <FieldLabel htmlFor="allow-remote-index">{t('import.dialog.allowRemoteIndex')}</FieldLabel>
+                                        <FieldDescription>{t('import.dialog.localNetworkNotice')}</FieldDescription>
+                                    </FieldContent>
+                                </Field>
+                            </FieldGroup>
                             <Button className="h-9 w-full text-xs" type="button" variant="outline" disabled={loading} onClick={() => void chooseXml()}>
                                 {loading ? t('import.dialog.readingSitemap') : t('import.dialog.chooseFile')}
                             </Button>
@@ -260,26 +304,6 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                                 <Button className="h-9 w-full text-xs" type="submit" disabled={loading || !crawlUrl.trim()}>{loading ? t('import.dialog.crawlRunning') : t('import.dialog.startCrawl')}</Button>
                             </form>
                         </div>
-                        {progress && (
-                            <Alert className="col-span-2 border-primary/20 bg-primary/5" role="status" aria-live="polite">
-                                <AlertTitle className="flex justify-between text-xs">
-                                    <span>{progress.label}</span>
-                                    <span className="tabular-nums text-muted-foreground">{progress.completed} / {progress.total}</span>
-                                </AlertTitle>
-                                <AlertDescription>
-                                    <Progress
-                                        className="mt-2 h-2"
-                                        value={progress.total ? (progress.completed / progress.total) * 100 : 0}
-                                    />
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {error && (
-                            <Alert className="col-span-2" variant="destructive">
-                                <TriangleAlert/>
-                                <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                        )}
                     </div>
                 ) : (
                     <>
@@ -294,6 +318,15 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                             </label>
                             <Button className="self-end" variant="outline" onClick={() => { setPages([]); setWarnings([]); setError(''); }} disabled={loading}>{t('import.dialog.otherSource')}</Button>
                         </div>
+
+                        <Alert>
+                            <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                                <span>{t('import.dialog.enrichNetworkNotice', {count: selectedCount, host: baseUrl})}</span>
+                                <Button variant="outline" disabled={loading || applying || !selectedCount} onClick={() => void enrichSelected()}>
+                                    {t('import.dialog.enrichSelected')}
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
 
                         {warnings.length > 0 && (
                             <Alert className="mx-4 mt-4 shrink-0 border-primary/25 bg-primary/5 text-xs">
@@ -316,7 +349,7 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                                 <TableHeader className="sticky top-0 z-10 bg-muted text-[10px] uppercase tracking-wide text-muted-foreground">
                                     <TableRow>
                                         <TableHead className="w-11 px-4 py-2">
-                                            <Checkbox checked={allFilteredSelected} aria-label={t('import.dialog.selectFilteredAria')} onCheckedChange={(checked) => toggleFiltered(checked === true)}/>
+                                            <Checkbox disabled={loading || applying} checked={allFilteredSelected} aria-label={t('import.dialog.selectFilteredAria')} onCheckedChange={(checked) => toggleFiltered(checked === true)}/>
                                         </TableHead>
                                         <TableHead className="w-[30%] px-2 py-2">{t('import.dialog.colTitle')}</TableHead>
                                         <TableHead className="px-2 py-2">{t('import.dialog.colUrl')}</TableHead>
@@ -328,8 +361,8 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                                 <TableBody>
                                     {visiblePages.map((page) => (
                                         <TableRow className="border-t border-border/70 hover:bg-muted/40" key={page.url}>
-                                            <TableCell className="px-4 py-2"><Checkbox checked={page.selected} aria-label={t('import.dialog.importPageAria', {title: page.title})} onCheckedChange={(checked) => togglePage(page.url, checked === true)}/></TableCell>
-                                            <TableCell className="px-2 py-1.5"><Input className="h-7 border-transparent bg-transparent px-1.5 text-xs shadow-none focus-visible:border-input" value={page.title} onChange={(event) => updateTitle(page.url, event.target.value)}/></TableCell>
+                                            <TableCell className="px-4 py-2"><Checkbox disabled={loading || applying} checked={page.selected} aria-label={t('import.dialog.importPageAria', {title: page.title})} onCheckedChange={(checked) => togglePage(page.url, checked === true)}/></TableCell>
+                                            <TableCell className="px-2 py-1.5"><Input disabled={loading || applying} aria-label={t('import.dialog.colTitle')} className="h-7 border-transparent bg-transparent px-1.5 text-xs shadow-none focus-visible:border-input" value={page.title} onChange={(event) => updateTitle(page.url, event.target.value)}/></TableCell>
                                             <TableCell className="truncate px-2 py-2 font-mono text-[10px] text-primary" title={page.finalUrl && page.finalUrl !== page.url ? `${page.url} → ${page.finalUrl}` : page.url}>{page.path}</TableCell>
                                             <TableCell className="px-2 py-2 text-[10px]">
                                                 <span className={page.httpStatus >= 400 ? 'font-semibold text-destructive' : page.finalUrl && page.finalUrl !== page.url ? 'font-semibold text-amber-600' : 'text-muted-foreground'}>
@@ -354,7 +387,7 @@ export function ImportWebsiteDialog({onClose, onImport}: ImportWebsiteDialogProp
                     <span className="text-[10px] text-muted-foreground">{t('import.dialog.footerNote')}</span>
                     <div className="flex gap-2 [&_button]:h-9 [&_button]:text-xs">
                         <Button variant="outline" onClick={close} disabled={applying}>{t('common.cancel')}</Button>
-                        {pages.length > 0 && <Button onClick={() => void apply()} disabled={!selectedCount || !projectName.trim() || applying}>{applying ? t('import.dialog.importing') : t('import.dialog.importCount', {count: selectedCount})}</Button>}
+                        {pages.length > 0 && <Button onClick={() => void apply()} disabled={loading || !selectedCount || !projectName.trim() || applying}>{applying ? t('import.dialog.importing') : t('import.dialog.importCount', {count: selectedCount})}</Button>}
                     </div>
                 </DialogFooter>
             </DialogContent>
