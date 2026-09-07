@@ -12,7 +12,7 @@
   [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![MōBrowser](https://img.shields.io/badge/M%C5%8DBrowser-2.15-111827)](https://mobrowser.dev/)
 
-  [Download](https://github.com/nickbethke/sitemap-builder/releases) · [Roadmap](TODO.md) · [Fehler melden](https://github.com/nickbethke/sitemap-builder/issues)
+  [Download](https://github.com/nickbethke/sitemap-builder/releases) · [Roadmap](ROADMAP.md) · [Fehler melden](https://github.com/nickbethke/sitemap-builder/issues)
 </div>
 
 ---
@@ -153,7 +153,7 @@ Lokale XML-Dateien werden standardmäßig offline eingelesen. Verknüpfte Sitema
 
 ## Roadmap
 
-Geplant sind unter anderem zusätzliche Exportformate, Dashboard-Auswertungen, Content-Briefings und erweiterte Redirect-Prüfungen. Vollständige Planung steht in [`TODO.md`](TODO.md).
+Geplant sind unter anderem zusätzliche Exportformate, Dashboard-Auswertungen, Content-Briefings und erweiterte Redirect-Prüfungen. Vollständige Planung inklusive Versionsschema steht in [`ROADMAP.md`](ROADMAP.md).
 
 ## Mitwirken
 
