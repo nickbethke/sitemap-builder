@@ -664,11 +664,14 @@ export function useSitemapBuilder() {
         try {
             const result = await ipc.app.ExportFile({content: base64, format: 'pdf', suggestedName: suggestedExportName()});
             setMessage(result.canceled ? t('status.exportCancelled') : t('status.exported', {name: result.path.split(/[\\/]/).pop() ?? ''}));
-        } catch {
-            setMessage(t('status.exportFailed'));
+        } catch (error) {
+            reportExportError(error);
         }
     };
-    const reportExportError = useCallback(() => setMessage(t('status.exportFailed')), [setMessage, t]);
+    const reportExportError = useCallback((error?: unknown) => {
+        const reason = error instanceof Error ? error.message : error ? String(error) : '';
+        setMessage(`${t('status.exportFailed')}${reason ? `: ${reason}` : ''}`);
+    }, [setMessage, t]);
 
     return {
         theme,

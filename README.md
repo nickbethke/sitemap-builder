@@ -65,6 +65,17 @@ Die integrierte Qualitätsprüfung erkennt unter anderem:
 - CSV-Datei für Redaktion und Projektmanagement exportieren
 - Visuelle Sitemap als PDF sowie Struktur als Markdown oder statische HTML-Datei exportieren
 
+### Exportformate
+
+| Format | Inhalt |
+|---|---|
+| PDF | Vektor-Seitenplan mit auswählbarem Text, unabhängig von Zoom, Suche und aktiver Ansicht. Ganze Sitemap auf einer automatisch skalierten Seite, heller Hintergrund. |
+| CSV | Redaktionelle Daten einschließlich IDs, Hierarchie, Beschreibung, Template, Navigation und Notizen. Semikolon, UTF-8 mit BOM, CRLF; Formeleingaben werden für Tabellenprogramme neutralisiert. |
+| XML | Suchmaschinen-Sitemap aus Basis-URL und Seitenpfaden; `noindex`-Seiten ausgeschlossen. Ungültige oder doppelte URLs verhindern Export. |
+| Markdown / HTML | Strukturübersicht mit Seitentyp, Status und SEO-Relevanz; noch kein vollständiges Content-Briefing. |
+
+Für verlustfreies Speichern und Wiederöffnen immer `.smap` verwenden. PDF ist derzeit ein einseitiger Strukturplan, kein mehrseitiges Drucklayout; die Standardschrift ist auf lateinische Texte ausgelegt. Mehrseitendruck und breitere Schriftabdeckung stehen auf der Roadmap.
+
 ## Download
 
 Fertige Pakete stehen unter [GitHub Releases](https://github.com/nickbethke/sitemap-builder/releases) bereit:
@@ -80,22 +91,34 @@ Fertige Pakete stehen unter [GitHub Releases](https://github.com/nickbethke/site
 ### Voraussetzungen
 
 - Node.js `^20.20.2`, `^22.22.2` oder `>=24.14.1`
-- npm
+- pnpm `10.34.7` (exakt in `package.json` festgelegt)
 - Unterstützte Desktop-Plattform: macOS, Windows oder Linux
 
 ### Projekt starten
 
+pnpm einmalig installieren (kein Corepack vorausgesetzt):
+
+```bash
+npm install --global pnpm@10.34.7
+```
+
 ```bash
 git clone https://github.com/nickbethke/sitemap-builder.git
 cd sitemap-builder
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
+
+Nur `pnpm-lock.yaml` als Lockfile pflegen. Dependency-Änderungen mit `pnpm add` bzw. `pnpm remove` durchführen. Installationsskripte sind über `onlyBuiltDependencies` in `pnpm-workspace.yaml` explizit freigegeben; neue Freigaben vor Aufnahme prüfen.
+
+`nodeLinker: hoisted` ist für den nativen Packager von MōBrowser 2.15 nötig: Mit isoliertem pnpm-Symlink-Layout scheitert er beim Einlesen von Runtime-Dependencies (`read .../node_modules/cheerio: is a directory`). CLI, API und SDK bleiben auf `2.15.0`; die CLI ist jetzt exakt gepinnt, damit kein inkompatibler Versionsmix entsteht. Nach SDK-Upgrade isoliertes Layout erneut prüfen.
+
+Die lokale MōBrowser-CLI über `pnpm exec mobrowser <command>` oder `pnpm run mobrowser <command>` starten. Flags direkt übergeben, etwa `pnpm run dev --automation` — ohne zusätzlichen npm-`--`-Trenner.
 
 ### Build erstellen
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 Build-Ausgabe landet unter `build/dist/<platform>-<arch>/bin`.
@@ -103,7 +126,7 @@ Build-Ausgabe landet unter `build/dist/<platform>-<arch>/bin`.
 ### Installer packen
 
 ```bash
-npm run pack
+pnpm run pack
 ```
 
 Auf macOS entsteht ein DMG, auf Windows ein EXE-Installer. Linux-Builds werden in GitHub Actions als `.tar.gz` archiviert.
@@ -112,14 +135,14 @@ Auf macOS entsteht ein DMG, auf Windows ein EXE-Installer. Linux-Builds werden i
 
 | Befehl | Beschreibung |
 |---|---|
-| `npm run dev` | Entwicklungs-Build starten |
-| `npm run dev:build` | Entwicklungs-Build ohne Start erstellen |
-| `npm run build` | Typecheck, Tests und Produktions-Build ausführen |
-| `npm run typecheck` | Renderer und Main-Prozess statisch prüfen |
-| `npm run lint` | TypeScript- und React-Regeln prüfen |
-| `npm test` | Unit- und Integrationstests ausführen |
-| `npm run pack` | Nativen Installer packen |
-| `npm run gen` | IPC-/Protobuf-Bindings neu generieren |
+| `pnpm run dev` | Entwicklungs-Build starten |
+| `pnpm run dev:build` | Entwicklungs-Build ohne Start erstellen |
+| `pnpm run build` | Typecheck, Tests und Produktions-Build ausführen |
+| `pnpm run typecheck` | Renderer und Main-Prozess statisch prüfen |
+| `pnpm run lint` | TypeScript- und React-Regeln prüfen |
+| `pnpm test` | Unit- und Integrationstests ausführen |
+| `pnpm run pack` | Nativen Installer packen |
+| `pnpm run gen` | IPC-/Protobuf-Bindings neu generieren |
 
 ## Tastenkürzel
 
@@ -141,7 +164,7 @@ Auf macOS entsteht ein DMG, auf Windows ein EXE-Installer. Linux-Builds werden i
 
 ## Build-Sicherheit
 
-Für `@mobrowser/cli@2.15.0` ist `adm-zip` gezielt auf `0.6.0` überschrieben, um [GHSA-xcpc-8h2w-3j85](https://github.com/advisories/GHSA-xcpc-8h2w-3j85) zu schließen. `tests/build-zip-compatibility.test.ts` prüft die von der CLI verwendete Archivextraktion. Override nach einem entsprechenden SDK-Update erneut bewerten; Windows-/Linux-Releasebuilds zusätzlich prüfen.
+Für den Dependency-Baum von `@mobrowser/cli` ist `adm-zip` über `pnpm-workspace.yaml` gezielt auf `0.6.0` überschrieben, um [GHSA-xcpc-8h2w-3j85](https://github.com/advisories/GHSA-xcpc-8h2w-3j85) zu schließen. `tests/build-zip-compatibility.test.ts` prüft die von der CLI verwendete Archivextraktion. Override nach einem entsprechenden SDK-Update erneut bewerten; Windows-/Linux-Releasebuilds zusätzlich prüfen.
 
 ## Lokale Daten
 

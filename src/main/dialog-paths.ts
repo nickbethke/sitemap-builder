@@ -1,6 +1,7 @@
 import {existsSync} from 'node:fs';
 import {homedir} from 'node:os';
-import {dirname, join} from 'node:path';
+import {join, posix, win32} from 'node:path';
+import {nativeFilePath} from './file-paths.ts';
 
 export type DialogLocation = 'project' | 'export' | 'import';
 
@@ -21,6 +22,7 @@ export class DialogPathPreferences {
     private readonly persist: () => boolean;
     private readonly fallback: string;
     private readonly exists: (path: string) => boolean;
+    private readonly platform: NodeJS.Platform;
 
     constructor(
         read: (key: string) => string,
@@ -28,27 +30,32 @@ export class DialogPathPreferences {
         persist: () => boolean,
         fallback = defaultDialogDirectory(),
         exists = existsSync,
+        platform: NodeJS.Platform = process.platform,
     ) {
         this.read = read;
         this.write = write;
         this.persist = persist;
-        this.fallback = fallback;
+        this.fallback = nativeFilePath(fallback, platform);
         this.exists = exists;
+        this.platform = platform;
     }
 
     directory(location: DialogLocation): string {
-        const stored = this.read(KEYS[location]);
+        const value = this.read(KEYS[location]);
+        const stored = value ? nativeFilePath(value, this.platform) : '';
         return stored && this.exists(stored) ? stored : this.fallback;
     }
 
     remember(location: DialogLocation, filePath: string): void {
-        const directory = dirname(filePath);
+        const paths = this.platform === 'win32' ? win32 : posix;
+        const directory = paths.dirname(nativeFilePath(filePath, this.platform));
         if (!this.exists(directory)) return;
         this.write(KEYS[location], directory);
         if (!this.persist()) console.error('Dialog-Ordner konnte nicht gespeichert werden.');
     }
 
     savePath(location: DialogLocation, fileName: string): string {
-        return join(this.directory(location), fileName);
+        const paths = this.platform === 'win32' ? win32 : posix;
+        return paths.join(this.directory(location), fileName);
     }
 }

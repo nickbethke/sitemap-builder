@@ -1,0 +1,14 @@
+# MōBrowser 2.15's native packager reads node_modules directories directly and
+# fails on pnpm's isolated symlink layout ("read .../node_modules/cheerio: is a directory").
+nodeLinker: hoisted
+
+# Keep the CLI ZIP security fix scoped to its dependency tree.
+overrides:
+  '@mobrowser/cli>adm-zip': 0.6.0
+
+# Explicit install-script approvals; all other dependency scripts stay blocked.
+# macOS SDK compiles its DMG helper. Other SDK platforms currently need no scripts.
+onlyBuiltDependencies:
+  - '@mobrowser/sdk-darwin-arm64'
+  - core-js
+  - fsevents

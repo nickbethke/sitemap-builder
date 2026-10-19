@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createRequire} from 'node:module';
+import {realpathSync} from 'node:fs';
 import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
 // Resolve the exact dependency used by the CLI without importing cmake.js
 // (that module may download/install tools as a side effect).
-const requireFromCli = createRequire(new URL('../node_modules/@mobrowser/cli/cmake.js', import.meta.url));
+// Follow pnpm's symlink so resolution starts in the CLI's own dependency tree.
+const requireFromCli = createRequire(realpathSync(new URL('../node_modules/@mobrowser/cli/cmake.js', import.meta.url)));
 const AdmZip = requireFromCli('adm-zip');
 
 test('patched CLI ZIP dependency supports CMake-style nested extraction and overwrite', async () => {

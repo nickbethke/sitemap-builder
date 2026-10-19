@@ -1,6 +1,6 @@
 import {MiniMap, type MiniMapViewport} from '@/components/sitemap/MiniMap.tsx';
 import {connectionPath, SitemapCard} from '@/components/sitemap/SitemapCard.tsx';
-import {captureCanvasAsPdfBase64} from '@/lib/canvasExport.ts';
+import {useDragAutoScroll} from '@/hooks/useDragAutoScroll.ts';
 import {CARD_WIDTH, layoutNodes, type LayoutDirection, type SitemapDocument} from '@/lib/sitemap.ts';
 import {
     type DragEvent,
@@ -14,7 +14,6 @@ import {
 } from 'react';
 
 export type CanvasViewHandle = {
-    exportPdf: () => Promise<void>;
     focusNode: (nodeId: string) => void;
 };
 
@@ -38,7 +37,6 @@ type CanvasViewProps = {
     onDropTargetChange: (id: string | null) => void;
     canMoveTo: (nodeId: string, parentId: string) => boolean;
     onDropNode: (event: DragEvent<HTMLElement>, parentId: string) => void;
-    onExportPdf: (base64: string) => Promise<void>;
 };
 
 export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function CanvasView(props, ref) {
@@ -61,11 +59,10 @@ export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function
         onDraggedNodeChange,
         onDropTargetChange,
         canMoveTo,
-        onDropNode,
-        onExportPdf
+        onDropNode
     } = props;
     const canvasRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
+    useDragAutoScroll(canvasRef, draggedId !== null);
     const [viewport, setViewport] = useState<MiniMapViewport>({
         scrollLeft: 0,
         scrollTop: 0,
@@ -105,13 +102,19 @@ export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function
         const canvas = canvasRef.current;
         if (!canvas) return;
         const wheel = (event: WheelEvent) => {
-            if (!event.metaKey && !event.ctrlKey) return;
+            if (!event.metaKey && !event.ctrlKey) {
+                if (draggedId) {
+                    event.preventDefault();
+                    canvas.scrollBy(event.shiftKey ? event.deltaY : event.deltaX, event.shiftKey ? 0 : event.deltaY);
+                }
+                return;
+            }
             event.preventDefault();
             onZoomChange(Math.max(.1, Math.min(2, zoom + (event.deltaY < 0 ? .025 : -.025))));
         };
         canvas.addEventListener('wheel', wheel, {passive: false});
         return () => canvas.removeEventListener('wheel', wheel);
-    }, [onZoomChange, zoom]);
+    }, [draggedId, onZoomChange, zoom]);
 
     const focusNode = useCallback((nodeId: string) => {
         const canvas = canvasRef.current;
@@ -125,11 +128,8 @@ export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function
     }, [layout.positions, zoom]);
 
     useImperativeHandle(ref, () => ({
-        exportPdf: async () => {
-            if (contentRef.current) await onExportPdf(await captureCanvasAsPdfBase64(contentRef.current, layout.width, layout.height));
-        },
         focusNode,
-    }), [focusNode, layout.height, layout.width, onExportPdf]);
+    }), [focusNode]);
 
     const navigate = (x: number, y: number) => canvasRef.current?.scrollTo({
         left: x * zoom - canvasRef.current.clientWidth / 2,
@@ -140,7 +140,7 @@ export const CanvasView = forwardRef<CanvasViewHandle, CanvasViewProps>(function
         <div ref={canvasRef} className="blueprint-canvas absolute inset-0 overflow-auto" onScroll={syncViewport}
              onClick={() => onSelectNode('')}>
             <div style={{width: layout.width * zoom, height: layout.height * zoom}}>
-                <div ref={contentRef} className="relative origin-top-left transition-transform"
+                <div className="relative origin-top-left transition-transform"
                      style={{width: layout.width, height: layout.height, transform: `scale(${zoom})`}}>
                     <svg
                         className="pointer-events-none absolute inset-0 overflow-visible [&_path]:fill-none [&_path]:stroke-[hsl(var(--line))] [&_path]:stroke-[1.5]"

@@ -641,19 +641,24 @@ export function documentToCsv(document: SitemapDocument, locale: Locale = DEFAUL
     const t = (key: TranslationKey) => translations[locale][key];
     const quote = (value: unknown) => {
         const text = String(value ?? '');
-        const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+        const safe = /^(?:[\s\u0000-\u001f]*[=+\-@]|[\t\r\n])/.test(text) ? `'${text}` : text;
         return `"${safe.replaceAll('"', '""')}"`;
     };
     const header = [
         t('export.csv.title'), t('export.csv.url'), t('export.csv.pageType'), t('export.csv.status'),
         t('export.csv.seoImportance'), t('export.csv.owner'), t('export.csv.seoTitle'), t('export.csv.seoDescription'),
         t('export.csv.noIndex'), t('export.csv.redirectFrom'),
+        t('export.csv.id'), t('export.csv.parentId'), t('export.csv.description'),
+        t('export.csv.template'), t('export.csv.navigation'), t('export.csv.notes'),
     ];
     const rows = document.nodes.map((node) => [
         node.title, node.slug, t(`pageType.${node.pageType}`), t(`pageStatus.${node.status}`), t(`seoImportance.${node.seoImportance}`),
         node.owner, node.seoTitle, node.seoDescription, node.noIndex ? t('export.csv.yes') : t('export.csv.no'), node.redirectFrom,
+        node.id, node.parentId, node.description, node.template,
+        node.showInMainNavigation !== false ? t('export.csv.yes') : t('export.csv.no'), node.notes,
     ]);
-    return [header, ...rows].map((row) => row.map(quote).join(';')).join('\n');
+    // UTF-8 BOM and CRLF let Excel on Windows recognize umlauts and row endings.
+    return `\uFEFF${[header, ...rows].map((row) => row.map(quote).join(';')).join('\r\n')}\r\n`;
 }
 
 function groupByParent(nodes: SitemapNode[]): Map<string | null, SitemapNode[]> {

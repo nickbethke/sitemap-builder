@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import {join} from 'node:path';
 import {DialogPathPreferences, defaultDialogDirectory} from '../src/main/dialog-paths.ts';
 
 test('uses Documents when available, then home', () => {
-    assert.equal(defaultDialogDirectory('/home/a', path => path === '/home/a/Documents'), '/home/a/Documents');
-    assert.equal(defaultDialogDirectory('/home/a', () => false), '/home/a');
+    const home = join('users', 'a');
+    const documents = join(home, 'Documents');
+    assert.equal(defaultDialogDirectory(home, path => path === documents), documents);
+    assert.equal(defaultDialogDirectory(home, () => false), home);
 });
 
 test('remembers independent project, export and import directories', () => {
@@ -16,6 +19,7 @@ test('remembers independent project, export and import directories', () => {
         () => { persistCalls += 1; return true; },
         '/Documents',
         () => true,
+        'linux',
     );
     assert.equal(preferences.directory('project'), '/Documents');
     assert.equal(preferences.savePath('export', 'sitemap.pdf'), '/Documents/sitemap.pdf');

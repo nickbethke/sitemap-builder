@@ -1,7 +1,9 @@
 import {app, BrowserWindow, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme} from '@mobrowser/api';
 import {readFile, rename, rm, stat, writeFile} from 'node:fs/promises';
-import {extname} from 'node:path';
+import {basename, extname} from 'node:path';
+import {nativeFilePath, withFileExtension} from './file-paths.ts';
 import {DialogPathPreferences} from './dialog-paths.ts';
+import {confirmAdjustedSaveTarget} from './save-target.ts';
 import * as process from 'node:process';
 import {randomUUID} from 'node:crypto';
 import {
@@ -53,6 +55,7 @@ win.centerWindow();
 win.show();
 
 async function openSitemapFile(path: string) {
+    path = nativeFilePath(path);
     if (extname(path).toLowerCase() !== '.smap') throw new Error('Keine gültige .smap-Datei.');
     const file = await stat(path);
     if (!file.isFile()) throw new Error('Pfad ist keine Datei.');
@@ -71,6 +74,18 @@ app.handle('openFile', (path) => {
         .catch((error: unknown) => console.error('Sitemap konnte nicht geöffnet werden:', error));
 });
 
+async function confirmExtensionChange(selectedPath: string, targetPath: string): Promise<boolean> {
+    return confirmAdjustedSaveTarget(selectedPath, targetPath, async (path) => {
+        const result = await app.showMessageDialog({
+            parentWindow: win,
+            title: 'Datei ersetzen?',
+            message: `Nach Korrektur der Dateiendung existiert diese Datei bereits:\n${path}\nSoll sie ersetzt werden?`,
+            buttons: [{label: 'Abbrechen', type: 'secondary'}, {label: 'Ersetzen', type: 'primary'}],
+        });
+        return result.button.type === 'primary';
+    });
+}
+
 ipc.registerService(AppServiceDescriptor, {
     async SetTheme(request: SetThemeRequest) {
         if (!['light', 'dark', 'system'].includes(request.theme)) throw new Error('Ungültiges Farbschema.');
@@ -83,13 +98,18 @@ ipc.registerService(AppServiceDescriptor, {
             const result = await app.showSaveDialog({
                 parentWindow: win,
                 title: 'Sitemap speichern',
-                defaultPath: dialogPaths.savePath('project', 'website-struktur.smap'),
+                // Native filters append the extension. Keep the proposed name extension-free.
+                defaultPath: dialogPaths.savePath('project', currentSitemapPath
+                    ? basename(currentSitemapPath).replace(/(?:\.smap)+$/i, '')
+                    : 'website-struktur'),
                 filters: [{name: 'Sitemap Builder Datei', extensions: ['smap']}],
             });
             if (result.canceled || !result.path) return {canceled: true, path: ''};
             path = result.path;
         }
-        if (extname(path).toLowerCase() !== '.smap') path += '.smap';
+        const selectedPath = path;
+        path = nativeFilePath(withFileExtension(path, 'smap'));
+        if (!await confirmExtensionChange(selectedPath, path)) return {canceled: true, path: ''};
 
         const temporaryPath = `${path}.${randomUUID()}.tmp`;
         try {
@@ -188,13 +208,13 @@ ipc.registerService(AppServiceDescriptor, {
         const result = await app.showSaveDialog({
             parentWindow: win,
             title: `${config.label} exportieren`,
-            defaultPath: dialogPaths.savePath('export', `${request.suggestedName || 'sitemap'}.${config.extension}`),
+            defaultPath: dialogPaths.savePath('export', (request.suggestedName || 'sitemap')
+                .replace(new RegExp(`(?:\\.${config.extension})+$`, 'i'), '')),
             filters: [{name: `${config.label} Datei`, extensions: [config.extension]}],
         });
         if (result.canceled || !result.path) return {canceled: true, path: ''};
-        const path = extname(result.path).toLowerCase() === `.${config.extension}`
-            ? result.path
-            : `${result.path}.${config.extension}`;
+        const path = nativeFilePath(withFileExtension(result.path, config.extension));
+        if (!await confirmExtensionChange(result.path, path)) return {canceled: true, path: ''};
         if (config.binary) {
             await writeFile(path, Buffer.from(request.content, 'base64'), {mode: 0o600});
         } else {

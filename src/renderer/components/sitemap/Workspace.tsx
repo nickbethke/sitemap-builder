@@ -7,6 +7,7 @@ import {Button} from '@/components/ui/button.tsx';
 import {Input} from '@/components/ui/input.tsx';
 import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select.tsx';
 import {useTranslation} from '@/lib/i18n/context.tsx';
+import {sitemapToPdfBase64} from '@/lib/canvasExport.ts';
 import {
     PAGE_STATUSES,
     PAGE_TYPES,
@@ -70,7 +71,7 @@ type WorkspaceProps = {
     onUpdateNode: <K extends keyof SitemapNode>(nodeId: string, key: K, value: SitemapNode[K]) => void;
     onUpdateNodes: <K extends keyof SitemapNode>(nodeIds: string[], key: K, value: SitemapNode[K]) => void;
     onExportPdf: (base64: string) => Promise<void>;
-    onExportError: () => void;
+    onExportError: (error?: unknown) => void;
     presentationMode: boolean;
     onPresentationModeChange: (enabled: boolean) => void;
     workspaceMode: 'sitemap' | 'menu';
@@ -116,7 +117,7 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                                                                                             onPresentationModeChange,
                                                                                             workspaceMode,
                                                                                         }: WorkspaceProps, ref) {
-    const {t} = useTranslation();
+    const {t, locale} = useTranslation();
     const [view, setView] = useState<'canvas' | 'table' | 'tree' | 'kanban' | 'menu'>('canvas');
     const [menuDepth, setMenuDepth] = useState(2);
     const [menuType, setMenuType] = useState<MenuType>('dropdown');
@@ -134,19 +135,14 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
             if (pdfExportingRef.current) return;
             pdfExportingRef.current = true;
             try {
-                if (!canvasViewRef.current) {
-                    setView('canvas');
-                    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
-                }
-                if (!canvasViewRef.current) throw new Error('Canvas ist für PDF-Export nicht verfügbar.');
-                await canvasViewRef.current.exportPdf();
-            } catch {
-                onExportError();
+                await onExportPdf(sitemapToPdfBase64(document, layoutDirection, locale));
+            } catch (error) {
+                onExportError(error);
             } finally {
                 pdfExportingRef.current = false;
             }
         },
-    }), [onExportError]);
+    }), [document, layoutDirection, locale, onExportError, onExportPdf]);
     const visibleNodeIds = useMemo(() => new Set(
         document.nodes
             .filter((node) => `${node.title} ${node.slug} ${node.description} ${node.owner} ${node.notes}`
@@ -407,7 +403,6 @@ export const Workspace = forwardRef<WorkspaceHandle, WorkspaceProps>(function Wo
                 onDropTargetChange={onDropTargetChange}
                 canMoveTo={canMoveTo}
                 onDropNode={onDropNode}
-                onExportPdf={onExportPdf}
             />}
 
             {!presentationMode && showIssues && (

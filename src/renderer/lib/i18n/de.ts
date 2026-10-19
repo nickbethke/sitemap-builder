@@ -72,6 +72,12 @@ export const de = {
     'export.csv.seoDescription': 'SEO-Beschreibung',
     'export.csv.noIndex': 'Noindex',
     'export.csv.redirectFrom': 'Redirect von',
+    'export.csv.id': 'Seiten-ID',
+    'export.csv.parentId': 'Übergeordnete ID',
+    'export.csv.description': 'Beschreibung',
+    'export.csv.template': 'Template',
+    'export.csv.navigation': 'Im Hauptmenü',
+    'export.csv.notes': 'Notizen',
     'export.csv.yes': 'Ja',
     'export.csv.no': 'Nein',
 
@@ -122,7 +128,7 @@ export const de = {
     'status.importedPages': '{{count}} Seiten aus XML importiert',
     'status.exportCancelled': 'Export abgebrochen',
     'status.exported': 'Exportiert: {{name}}',
-    'status.exportFailed': 'Export fehlgeschlagen oder zu groß',
+    'status.exportFailed': 'Export fehlgeschlagen',
     'status.pageDeletedOne': '1 Seite gelöscht',
     'status.pageDeletedMany': '{{count}} Seiten gelöscht',
 

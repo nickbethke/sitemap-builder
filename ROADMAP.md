@@ -58,6 +58,9 @@ Schließt die noch offenen Punkte aus der Sicherheits-Checkliste (P2 in `.pi/aud
 Export-/Redirect-Funktionen, die für Relaunch-Projekte in Agenturen besonders relevant sind.
 
 - [ ] `adm-zip`-Override (Befund S-02) nach einem passenden SDK-Update erneut bewerten und ggf. entfernen.
+- [ ] Export-Einstellungen vereinheitlichen: gesamte Sitemap vs. Auswahl/Teilbaum, enthaltene Felder und klare Vorschau pro Format.
+- [ ] PDF um mehrseitiges A4-/A3-Drucklayout mit Seitenüberlappung, Projektkopf und eingebetteten Unicode-Schriften erweitern (aktuell einseitiger Vektor-Strukturplan).
+- [ ] Markdown-/HTML-Export um optionale Content-Briefings erweitern: Beschreibung, Owner, SEO-Felder, Redirects und Notizen; HTML zusätzlich mit Druckstylesheet.
 - [ ] Excel-Export für Redaktion und Projektmanagement (ergänzt bestehenden CSV-Export).
 - [ ] Redirect-Manager als eigenes Tool Window statt Detailfelder pro Seite.
 - [ ] Redirect-Ketten, Schleifen und doppelte Ziele automatisch erkennen.

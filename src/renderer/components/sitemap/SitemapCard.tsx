@@ -133,6 +133,7 @@ export function SitemapCard({
             onDragStart={(event) => {
                 onDraggedNodeChange(node.id);
                 event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', node.id);
             }}
             onDragEnd={() => {
                 onDraggedNodeChange(null);

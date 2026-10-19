@@ -74,6 +74,12 @@ export const en: Record<TranslationKey, string> = {
     'export.csv.seoDescription': 'SEO description',
     'export.csv.noIndex': 'Noindex',
     'export.csv.redirectFrom': 'Redirect from',
+    'export.csv.id': 'Page ID',
+    'export.csv.parentId': 'Parent ID',
+    'export.csv.description': 'Description',
+    'export.csv.template': 'Template',
+    'export.csv.navigation': 'In main navigation',
+    'export.csv.notes': 'Notes',
     'export.csv.yes': 'Yes',
     'export.csv.no': 'No',
 
@@ -124,7 +130,7 @@ export const en: Record<TranslationKey, string> = {
     'status.importedPages': '{{count}} pages imported from XML',
     'status.exportCancelled': 'Export cancelled',
     'status.exported': 'Exported: {{name}}',
-    'status.exportFailed': 'Export failed or is too large',
+    'status.exportFailed': 'Export failed',
     'status.pageDeletedOne': '1 page deleted',
     'status.pageDeletedMany': '{{count}} pages deleted',
 
