@@ -27,9 +27,8 @@ Sitemap Builder folgt SemVer (`MAJOR.MINOR.PATCH`), Git-Tags im Format `vX.Y.Z`:
 - **MAJOR** — Breaking Change: neues oder inkompatibles `.smap`-Dateiformat, entfernte Funktionen, oder ein grundlegend
   neues Betriebsmodell (z. B. Einführung von Cloud-Konten in v2.0.0, Plattform-Umbau in v3.0.0).
 
-**Aktueller Zustand & offener Punkt:** `package.json` steht auf `0.0.1`, während bereits Git-Tags bis `v1.0.004`
-existieren. Diese Diskrepanz wird mit dem nächsten Release behoben (siehe v1.0.0 unten), damit Package- und Tag-Version
-wieder übereinstimmen und zukünftige Versionssprünge nachvollziehbar bleiben.
+**Aktueller Stand:** `package.json` und `mobrowser.conf.json` stehen auf `1.0.0`. Ein Git-Tag `v1.0.0` existiert bereits;
+die älteren Tags `v1.0.001` bis `v1.0.004` folgen nicht dem SemVer-Format. Zukünftige Releases verwenden gültige SemVer-Tags.
 
 Der bestehende Release-Workflow (`.github/workflows/release.yml`) baut automatisch bei jedem Push eines `v*`-Tags für
 macOS, Windows und Linux. Jeder Meilenstein in dieser Roadmap mündet perspektivisch in genau so einen Tag und ein GitHub
@@ -48,7 +47,7 @@ der hier geplanten Änderungen bricht bestehende `.smap`-Dateien oder erzwingt n
 
 Reiner Hygiene-Release, der die Grundlage für alle folgenden Versionen schafft.
 
-- [ ] `package.json`-Version auf `1.0.0` anheben, damit Tag- und Package-Version wieder synchron laufen.
+- [x] `package.json`-Version auf `1.0.0` anheben, passend zu `mobrowser.conf.json`.
 - [ ] Audit-Fixes aus `.pi/audit/FIXES.md` (Befunde S-01–S-04, F-01–F-04) committen und im Repo verankern — aktuell nur
   im lokalen Arbeitsstand vorhanden, noch nicht Teil der Git-Historie.
 
