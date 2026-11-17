@@ -17,6 +17,7 @@ import {
     documentToXml,
     type LayoutDirection,
     normalizeDocument,
+    regenerateNodeUrls,
     type SitemapDocument,
     type SitemapNode,
     type SitemapProject,
@@ -332,6 +333,16 @@ export function useSitemapBuilder() {
 
     const updateNode = <K extends keyof SitemapNode>(key: K, value: SitemapNode[K]) => {
         updateNodeById(selectedId, key, value);
+    };
+
+    const regenerateUrls = async (descendants: boolean) => {
+        const nodeId = selectedId;
+        if (!nodeId || !await requestConfirmation({
+            title: t(descendants ? 'confirm.regenerateChildren.title' : 'confirm.regenerateUrl.title'),
+            description: t(descendants ? 'confirm.regenerateChildren.description' : 'confirm.regenerateUrl.description'),
+            confirmLabel: t('inspector.regenerateConfirm'),
+        })) return;
+        mutateDocument((current) => regenerateNodeUrls(current, nodeId, descendants));
     };
 
     const updateNodes = <K extends keyof SitemapNode>(
@@ -709,6 +720,7 @@ export function useSitemapBuilder() {
         open,
         updateProject,
         updateNode,
+        regenerateUrls,
         updateNodeById,
         updateNodes,
         addChild,

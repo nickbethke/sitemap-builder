@@ -783,6 +783,37 @@ export function createChildSlug(parentSlug: string, title: string) {
     return segment ? `${parent}/${segment}` : parent || '/';
 }
 
+export function regenerateNodeUrls(document: SitemapDocument, nodeId: string, descendants: boolean): SitemapDocument {
+    const selected = document.nodes.find((node) => node.id === nodeId);
+    if (!selected) return document;
+    const children = new Map<string, SitemapNode[]>();
+    for (const node of document.nodes) {
+        if (node.parentId === null) continue;
+        const siblings = children.get(node.parentId) ?? [];
+        siblings.push(node);
+        children.set(node.parentId, siblings);
+    }
+    const urls = new Map<string, string>();
+    if (descendants) {
+        const queue = [{node: selected, slug: selected.slug}];
+        const visited = new Set([selected.id]);
+        for (let i = 0; i < queue.length; i++) {
+            const parent = queue[i];
+            for (const child of children.get(parent.node.id) ?? []) {
+                if (visited.has(child.id)) continue;
+                visited.add(child.id);
+                const slug = createChildSlug(parent.slug, child.title);
+                urls.set(child.id, slug);
+                queue.push({node: child, slug});
+            }
+        }
+    } else if (selected.parentId !== null) {
+        const parent = document.nodes.find((node) => node.id === selected.parentId);
+        if (parent) urls.set(selected.id, createChildSlug(parent.slug, selected.title));
+    }
+    return {...document, nodes: document.nodes.map((node) => urls.has(node.id) ? {...node, slug: urls.get(node.id)!} : node)};
+}
+
 export function createNodeId() {
     return `page-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }

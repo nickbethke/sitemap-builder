@@ -155,6 +155,8 @@ function SitemapBuilder() {
                 canMoveUp={sitemap.canMoveUp}
                 canMoveDown={sitemap.canMoveDown}
                 onUpdateNode={sitemap.updateNode}
+                hasChildren={sitemap.document.nodes.some((node) => node.parentId === sitemap.selectedNode?.id)}
+                onRegenerateUrls={(descendants) => void sitemap.regenerateUrls(descendants)}
                 onMoveUp={() => sitemap.moveSelectedSibling(-1)}
                 onMoveDown={() => sitemap.moveSelectedSibling(1)}
                 onDuplicate={() => sitemap.duplicateNode()}

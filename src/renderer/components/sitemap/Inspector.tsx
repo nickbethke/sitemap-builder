@@ -27,6 +27,8 @@ type InspectorProps = {
     canMoveUp: boolean;
     canMoveDown: boolean;
     onUpdateNode: UpdateNode;
+    hasChildren: boolean;
+    onRegenerateUrls: (descendants: boolean) => void;
     onMoveUp: () => void;
     onMoveDown: () => void;
     onDuplicate: () => void;
@@ -48,6 +50,8 @@ export function Inspector({
     canMoveUp,
     canMoveDown,
     onUpdateNode,
+    hasChildren,
+    onRegenerateUrls,
     onMoveUp,
     onMoveDown,
     onDuplicate,
@@ -154,6 +158,14 @@ export function Inspector({
                                 onChange={(event: React.ChangeEvent<HTMLInputElement>) => onUpdateNode('slug', event.target.value)}
                             />
                         </label>
+                        <div className="flex flex-col gap-2">
+                            <Button type="button" variant="outline" size="sm" disabled={selectedNode.parentId === null} onClick={() => onRegenerateUrls(false)}>
+                                {t('inspector.regenerateUrl')}
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" disabled={!hasChildren} onClick={() => onRegenerateUrls(true)}>
+                                {t('inspector.regenerateChildren')}
+                            </Button>
+                        </div>
                         <label className={labelClass}>
                             {t('inspector.description')}
                             <Textarea
